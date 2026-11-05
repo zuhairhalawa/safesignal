@@ -3,84 +3,122 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>SafeSignal — understand a suspicious message</title>
+<title>SafeSignal — is this message a scam?</title>
 <style>
   :root{
-    --bg:#0f1420; --panel:#161d2b; --panel2:#1d2639; --ink:#e8edf6; --muted:#9fb0c7;
-    --line:#2a3550; --accent:#6ea8fe; --low:#3fb950; --caution:#d29922; --high:#f85149;
-    --focus:#9ecbff;
+    --paper:#eef2f8; --surface:#ffffff; --ink:#13233b; --muted:#56657d; --line:#dde4ef;
+    --brand:#1b4d8f; --brand-ink:#ffffff;
+    --safe:#1e8e53; --safe-bg:#e7f4ec; --safe-line:#bfe3cc;
+    --warn:#a4620a; --warn-bg:#fbf1dd; --warn-line:#eccf93;
+    --dang:#c0271f; --dang-bg:#fbe9e7; --dang-line:#f0c0ba;
+    --focus:#1b4d8f;
+    --shadow:0 1px 2px rgba(19,35,59,.04), 0 10px 30px rgba(19,35,59,.07);
+    --sans:"Segoe UI",system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;
   }
   *{box-sizing:border-box}
-  body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
-  .wrap{max-width:860px;margin:0 auto;padding:24px 18px 64px}
+  html{-webkit-text-size-adjust:100%}
+  body{margin:0;background:var(--paper);color:var(--ink);font:17px/1.55 var(--sans);
+    background-image:radial-gradient(60rem 30rem at 50% -10rem,rgba(27,77,143,.06),transparent 70%)}
+  .wrap{max-width:720px;margin:0 auto;padding:28px 20px 72px}
+  a{color:var(--brand)}
+
+  /* Header */
   .brand{display:flex;align-items:center;gap:12px}
-  .brand .logo{flex:none;width:40px;height:40px}
-  header h1{margin:0;font-size:1.5rem}
-  .tag{color:var(--muted);margin:8px 0 10px}
-  .privacy{display:inline-flex;gap:8px;align-items:center;background:var(--panel2);border:1px solid var(--line);
-    color:var(--muted);padding:6px 10px;border-radius:999px;font-size:.84rem}
-  .privacy b{color:var(--low)}
-  .tabs{display:flex;gap:8px;margin-top:18px;border-bottom:1px solid var(--line)}
-  .tab{appearance:none;background:none;border:none;border-bottom:2px solid transparent;color:var(--muted);
-    font:inherit;font-weight:700;padding:10px 6px;margin-bottom:-1px;cursor:pointer}
-  .tab[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent)}
-  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px;margin-top:16px}
-  label{display:block;font-weight:600;margin:0 0 6px}
-  textarea{width:100%;background:var(--panel2);color:var(--ink);border:1px solid var(--line);border-radius:10px;
-    padding:12px;font:14px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;resize:vertical}
-  textarea#msg{min-height:150px}
-  textarea#hdr{min-height:90px}
-  details.hdr{margin-top:12px}
-  summary{cursor:pointer;color:var(--accent);font-weight:600}
-  .row{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:14px}
-  button{font:inherit;font-weight:600;border-radius:10px;border:1px solid var(--line);
-    background:var(--panel2);color:var(--ink);padding:10px 14px;cursor:pointer}
-  button.primary{background:var(--accent);color:#07101f;border-color:transparent}
-  button:focus-visible,summary:focus-visible,textarea:focus-visible,.tab:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
-  .examples{color:var(--muted);font-size:.9rem;margin-right:4px}
-  .verdict{display:flex;gap:14px;align-items:center;flex-wrap:wrap}
-  .badge{font-weight:800;letter-spacing:.3px;padding:8px 14px;border-radius:10px;border:1px solid var(--line)}
-  .badge.low{background:rgba(63,185,80,.14);color:var(--low);border-color:rgba(63,185,80,.4)}
-  .badge.caution{background:rgba(210,153,34,.14);color:var(--caution);border-color:rgba(210,153,34,.4)}
-  .badge.high{background:rgba(248,81,73,.14);color:var(--high);border-color:rgba(248,81,73,.45)}
-  .meter{flex:1;min-width:140px;height:10px;background:var(--panel2);border-radius:999px;overflow:hidden;border:1px solid var(--line)}
-  .meter>i{display:block;height:100%;width:0}
-  .summary{margin:10px 0 0;color:var(--ink)}
-  .action{margin:12px 0 0;padding:12px 14px;border-radius:10px;border:1px solid var(--line);
-    background:var(--panel2);font-weight:600}
-  .action.high{border-color:rgba(248,81,73,.45);background:rgba(248,81,73,.1)}
-  .action.caution{border-color:rgba(210,153,34,.4);background:rgba(210,153,34,.1)}
-  .action.low{border-color:rgba(63,185,80,.35);background:rgba(63,185,80,.08)}
-  .toolbar{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
-  .toolbar button{font-size:.9rem;padding:8px 12px}
-  .sig{border:1px solid var(--line);border-radius:10px;margin-top:10px;background:var(--panel2)}
-  .sig>summary{list-style:none;padding:12px 14px;display:flex;gap:10px;align-items:center;justify-content:space-between}
+  .brand svg{flex:none;width:38px;height:38px}
+  .brand h1{margin:0;font-size:1.45rem;font-weight:800;letter-spacing:-.01em}
+  .lede{color:var(--muted);margin:10px 0 0;font-size:1.06rem;max-width:46ch}
+  .trust{display:inline-flex;gap:8px;align-items:center;margin-top:14px;font-size:.86rem;color:var(--muted)}
+  .trust .lock{color:var(--safe);font-weight:700}
+
+  /* Tabs */
+  .tabs{display:flex;gap:4px;margin-top:22px;background:#e4eaf3;border:1px solid var(--line);
+    padding:4px;border-radius:12px;width:fit-content}
+  .tab{appearance:none;border:none;background:none;color:var(--muted);font:inherit;font-weight:700;
+    font-size:.95rem;padding:8px 16px;border-radius:9px;cursor:pointer}
+  .tab[aria-selected="true"]{background:var(--surface);color:var(--ink);box-shadow:var(--shadow)}
+
+  /* Cards + inputs */
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:20px;
+    margin-top:18px;box-shadow:var(--shadow)}
+  .field-label{display:block;font-weight:700;margin:0 0 8px}
+  textarea{width:100%;background:#fbfcfe;color:var(--ink);border:1px solid var(--line);border-radius:12px;
+    padding:14px;font:15px/1.5 var(--sans);resize:vertical}
+  textarea:focus{border-color:var(--brand);background:#fff}
+  textarea#msg{min-height:132px}
+  textarea#hdr{min-height:86px}
+  details.hdr{margin-top:14px}
+  details.hdr>summary{color:var(--brand);font-weight:600;cursor:pointer;font-size:.95rem}
+  .hint{color:var(--muted);font-size:.9rem;margin:8px 0 6px}
+
+  .actions{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:16px}
+  button{font:inherit;font-weight:600;border-radius:11px;border:1px solid var(--line);
+    background:var(--surface);color:var(--ink);padding:11px 16px;cursor:pointer;transition:border-color .12s,background .12s}
+  button:hover{border-color:#c3cede}
+  button.primary{background:var(--brand);color:var(--brand-ink);border-color:var(--brand)}
+  button.primary:hover{background:#163f75}
+  :focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+  .try{color:var(--muted);font-size:.9rem;margin-left:2px}
+  .chip{padding:8px 13px;font-size:.9rem;border-radius:999px}
+
+  /* Verdict — the hero */
+  .verdict{display:grid;grid-template-columns:auto 1fr;gap:16px;align-items:start;
+    border-radius:16px;padding:20px 22px;border:1px solid var(--line)}
+  .verdict.safe{background:var(--safe-bg);border-color:var(--safe-line)}
+  .verdict.caution{background:var(--warn-bg);border-color:var(--warn-line)}
+  .verdict.danger{background:var(--dang-bg);border-color:var(--dang-line)}
+  .vmark{width:52px;height:52px;border-radius:50%;display:grid;place-items:center;
+    font-size:1.7rem;font-weight:800;color:#fff;line-height:1}
+  .safe .vmark{background:var(--safe)} .caution .vmark{background:var(--warn)} .danger .vmark{background:var(--dang)}
+  .vword{margin:2px 0 0;font-size:clamp(1.7rem,6.5vw,2.3rem);font-weight:800;letter-spacing:-.02em;line-height:1.05}
+  .safe .vword{color:var(--safe)} .caution .vword{color:var(--warn)} .danger .vword{color:var(--dang)}
+  .vsummary{margin:8px 0 0;color:var(--ink)}
+  .vaction{margin:12px 0 0;font-weight:600;font-size:1.06rem}
+  .vmeta{margin:12px 0 0;font-size:.84rem;color:var(--muted)}
+  @media (prefers-reduced-motion:no-preference){
+    .verdict{animation:rise .32s ease-out}
+    @keyframes rise{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+  }
+
+  .toolbar{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}
+  .toolbar button{font-size:.9rem;padding:9px 13px}
+
+  /* Signals */
+  .sig-head{font-weight:700;margin:22px 0 4px}
+  .sig{border:1px solid var(--line);border-radius:12px;margin-top:10px;background:#fbfcfe;overflow:hidden}
+  .sig>summary{list-style:none;padding:13px 15px;display:flex;gap:12px;align-items:center;cursor:pointer}
   .sig>summary::-webkit-details-marker{display:none}
-  .sig .lbl{display:flex;gap:10px;align-items:center}
-  .dot{width:10px;height:10px;border-radius:50%}
-  .dot.low{background:var(--low)} .dot.medium{background:var(--caution)} .dot.high{background:var(--high)}
-  .sev{font-size:.74rem;text-transform:uppercase;letter-spacing:.5px;color:var(--muted)}
-  .sig .body{padding:0 14px 14px;color:var(--muted)}
+  .sig[open]>summary{background:#f4f7fc}
+  .dot{width:11px;height:11px;border-radius:50%;flex:none}
+  .dot.high{background:var(--dang)} .dot.medium{background:var(--warn)} .dot.low{background:var(--safe)}
+  .sig summary strong{flex:1}
+  .sev{font-size:.72rem;letter-spacing:.04em;color:var(--muted);text-transform:lowercase}
+  .sig .body{padding:0 15px 15px 38px;color:var(--muted)}
   .sig .body p{margin:8px 0}
   .sig .body .advice{color:var(--ink)}
-  .evi{font-family:ui-monospace,Consolas,monospace;font-size:.82rem;background:var(--bg);border:1px solid var(--line);
-    border-radius:8px;padding:8px 10px;margin-top:6px;word-break:break-word}
-  .good{color:var(--low)}
-  ul.lim{color:var(--muted);font-size:.9rem;padding-left:18px}
+  .evi{font-family:ui-monospace,Consolas,monospace;font-size:.82rem;background:#f1f4fa;border:1px solid var(--line);
+    border-radius:8px;padding:9px 11px;margin-top:6px;word-break:break-word;color:var(--ink)}
+  .good{color:var(--safe);font-weight:600;margin-top:12px}
+  .how{margin-top:16px}
+  .how>summary{color:var(--brand);font-weight:600;cursor:pointer}
+  ul.lim{color:var(--muted);font-size:.92rem;padding-left:20px;margin:8px 0 0}
   .empty{color:var(--muted)}
+
   /* Learn mode */
-  .quiz-msg{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:14px;
-    font:14px/1.5 ui-monospace,Consolas,monospace;white-space:pre-wrap;word-break:break-word}
-  .choices{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
-  .choices button{flex:1;min-width:150px;padding:12px}
-  .reveal{margin-top:14px;border-radius:10px;border:1px solid var(--line);padding:12px 14px;background:var(--panel2)}
-  .reveal.right{border-color:rgba(63,185,80,.45)}
-  .reveal.wrong{border-color:rgba(248,81,73,.45)}
-  .reveal .verdictline{font-weight:700;margin:0 0 6px}
-  .progress{color:var(--muted);font-size:.9rem;margin-bottom:10px}
-  .score-big{font-size:1.4rem;font-weight:800}
-  footer{color:var(--muted);font-size:.82rem;margin-top:22px}
-  .disclaimer{background:rgba(248,81,73,.07);border:1px solid rgba(248,81,73,.3);border-radius:10px;padding:10px 12px;color:var(--muted);font-size:.86rem;margin-top:16px}
+  .progress{color:var(--muted);font-size:.92rem;font-weight:600;margin:0 0 14px}
+  .q-prompt{font-weight:700;margin:0 0 12px}
+  .q-msg{background:#fbfcfe;border:1px solid var(--line);border-radius:12px;padding:15px;
+    font:15px/1.55 var(--sans);white-space:pre-wrap;word-break:break-word}
+  .choices{display:flex;gap:12px;flex-wrap:wrap;margin-top:16px}
+  .choices button{flex:1;min-width:150px;padding:14px;font-size:1rem}
+  .reveal{margin-top:16px;border-radius:12px;border:1px solid var(--line);padding:15px;background:#fbfcfe}
+  .reveal.right{border-color:var(--safe-line);background:var(--safe-bg)}
+  .reveal.wrong{border-color:var(--dang-line);background:var(--dang-bg)}
+  .reveal .vline{font-weight:800;margin:0 0 7px}
+  .lesson{color:var(--muted);margin:0 0 14px}
+  .score-big{font-size:1.6rem;font-weight:800;margin:0}
+
+  .note{color:var(--muted);font-size:.9rem;margin-top:22px;border-left:3px solid var(--line);padding:2px 0 2px 14px}
+  footer{color:var(--muted);font-size:.84rem;margin-top:26px;line-height:1.6}
   [hidden]{display:none !important}
 </style>
 </head>
@@ -88,62 +126,64 @@
 <div class="wrap">
   <header>
     <div class="brand">
-      <svg class="logo" viewBox="0 0 48 48" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
-        <path d="M24 3l16 6v10c0 11-7 18-16 23C15 37 8 30 8 19V9l16-6z" fill="#1d2639" stroke="#6ea8fe" stroke-width="2.5" stroke-linejoin="round"/>
-        <path d="M16 24.5l5.5 5.5L33 18.5" fill="none" stroke="#3fb950" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
+      <svg viewBox="0 0 48 48" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+        <path d="M24 3.5l15.5 5.6v9.9c0 10.8-6.8 17.6-15.5 22.5C15.3 36.6 8.5 29.8 8.5 19V9.1L24 3.5z" fill="#fff" stroke="#1b4d8f" stroke-width="2.4" stroke-linejoin="round"/>
+        <path d="M16.5 24.3l5.2 5.2L32 19.2" fill="none" stroke="#1e8e53" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
       </svg>
       <h1>SafeSignal</h1>
     </div>
-    <p class="tag">Understand a suspicious email or text — and learn to spot the next one. Plain language, no jargon.</p>
-    <span class="privacy">🔒 <span><b>Private by design:</b> runs entirely in your browser. Nothing you type is sent, stored, or logged.</span></span>
+    <p class="lede">Not sure if an email or text is a scam? Paste it here. You'll get a clear answer in plain language — and learn to spot the next one.</p>
+    <span class="trust"><span class="lock">🔒</span> Everything runs on your device. Nothing you type is uploaded, saved, or seen by anyone.</span>
 
     <div class="tabs" role="tablist" aria-label="Modes">
       <button class="tab" id="tab-check" role="tab" aria-selected="true" aria-controls="panel-check">Check a message</button>
-      <button class="tab" id="tab-learn" role="tab" aria-selected="false" aria-controls="panel-learn">Learn: spot the scam</button>
+      <button class="tab" id="tab-learn" role="tab" aria-selected="false" aria-controls="panel-learn">Practice spotting scams</button>
     </div>
   </header>
 
   <!-- CHECK -->
   <div id="panel-check" role="tabpanel" aria-labelledby="tab-check">
     <section class="card">
-      <label for="msg">The message you received</label>
-      <textarea id="msg" placeholder="Paste the email or SMS text here…"></textarea>
+      <label class="field-label" for="msg">Paste the message you received</label>
+      <textarea id="msg" placeholder="For example: &quot;Your account has been suspended. Verify within 24 hours: http://…&quot;"></textarea>
 
       <details class="hdr">
-        <summary>Optional: paste raw email headers (From / Reply-To / Authentication-Results)</summary>
-        <p class="examples" style="margin:8px 0 4px">Headers let SafeSignal check for sender spoofing and failed SPF/DKIM/DMARC. Leave blank for plain text/SMS.</p>
-        <textarea id="hdr" placeholder="From: ...&#10;Reply-To: ...&#10;Authentication-Results: ..."></textarea>
+        <summary>Have the raw email headers? Paste them for a deeper check (optional)</summary>
+        <p class="hint">Headers let SafeSignal check for a forged sender and failed SPF/DKIM/DMARC. Leave this blank for a text or SMS.</p>
+        <textarea id="hdr" placeholder="From: …&#10;Reply-To: …&#10;Authentication-Results: …"></textarea>
       </details>
 
-      <div class="row">
-        <button id="analyze" class="primary">Analyze message</button>
+      <div class="actions">
+        <button id="analyze" class="primary">Check this message</button>
         <button id="clear" type="button">Clear</button>
-        <span class="examples">Try an example:</span>
-        <button class="ex" data-ex="phish" type="button">Account “suspended”</button>
-        <button class="ex" data-ex="giftcard" type="button">Gift-card request</button>
-        <button class="ex" data-ex="legit" type="button">A normal message</button>
+        <span class="try">Or try one:</span>
+        <button class="chip ex" data-ex="phish" type="button">“Account suspended”</button>
+        <button class="chip ex" data-ex="giftcard" type="button">Gift-card request</button>
+        <button class="chip ex" data-ex="legit" type="button">A normal message</button>
       </div>
     </section>
 
     <section id="results" class="card" hidden role="status" aria-live="polite">
-      <div class="verdict">
-        <span id="badge" class="badge">—</span>
-        <div class="meter" aria-hidden="true"><i id="bar"></i></div>
-        <span id="score" class="examples"></span>
+      <div id="verdict" class="verdict">
+        <div class="vmark" id="vmark" aria-hidden="true"></div>
+        <div>
+          <p class="vword" id="vword"></p>
+          <p class="vsummary" id="vsummary"></p>
+          <p class="vaction" id="vaction"></p>
+          <p class="vmeta" id="vmeta"></p>
+        </div>
       </div>
-      <p id="summary" class="summary"></p>
-      <p id="action" class="action"></p>
 
       <div class="toolbar">
-        <button id="speak" type="button" hidden>🔊 Read aloud</button>
-        <button id="copy" type="button">📋 Copy a shareable summary</button>
+        <button id="speak" type="button" hidden>🔊 Read this to me</button>
+        <button id="copy" type="button">📋 Copy a note to share</button>
       </div>
 
       <div id="signals"></div>
       <div id="positives"></div>
 
-      <details style="margin-top:14px">
-        <summary>How SafeSignal reached this & its limits</summary>
+      <details class="how">
+        <summary>How it decided, and what it can't do</summary>
         <ul id="limits" class="lim"></ul>
       </details>
     </section>
@@ -157,11 +197,10 @@
     </section>
   </div>
 
-  <p class="disclaimer">SafeSignal is a learning aid, not a guarantee. It explains common scam hallmarks in text you paste; it cannot verify a sender, open links, or catch every scam. When in doubt, contact the organisation through a channel you already trust. In an emergency, contact local authorities — this is not a replacement for emergency services.</p>
+  <p class="note">SafeSignal is a learning aid, not a guarantee. It reads the text you paste and explains common scam signs — it can't verify a sender, open links, or catch every scam. When unsure, reach the company through a number or app you already trust. In an emergency, contact your local authorities.</p>
 
   <footer>
-    SafeSignal · 100% local · no network calls · MIT-licensed · built for SafeSpace Hacks 2026.
-    Built with AI assistance (disclosed per event rules); all code is original first-party work.
+    Built for SafeSpace Hacks 2026. SafeSignal runs entirely in your browser with no network calls, and is open-source under the MIT licence. Built with AI assistance, disclosed per the event rules; all code is original.
   </footer>
 </div>
 
@@ -170,21 +209,19 @@
 
   const $ = (id) => document.getElementById(id);
   const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-  const VERDICT = { low: 'Low signal', caution: 'Caution', high: 'Likely scam' };
+  const CLS = { low: 'safe', caution: 'caution', high: 'danger' };
+  const MARK = { low: '✓', caution: '!', high: '⚠' };
+  const WORD = { low: 'No clear red flags', caution: 'Be careful', high: 'Likely a scam' };
   const ACTION = {
-    high: '🚫 Recommended: do not click, reply, call, pay, or share any details. If it claims to be from a company you use, open their official app or type their website address yourself.',
-    caution: '⚠️ Recommended: slow down and verify independently before acting. Do not use the links or phone numbers in this message — reach the organisation through a channel you already trust.',
-    low: 'ℹ️ Recommended: no strong red flags, but stay alert — this is not proof it is safe. Never enter a password or make a payment because of an unexpected message.',
+    high: "Don't click, reply, call, or pay. If it claims to be a company you use, open their official app or type their website address yourself.",
+    caution: 'Slow down and check it another way before you act — don’t use any link or phone number in this message.',
+    low: "No clear red flags — but that isn't proof it's safe. Never enter a password or make a payment because of an unexpected message.",
   };
 
   // ---------- Tabs ----------
   const tabs = [['tab-check', 'panel-check'], ['tab-learn', 'panel-learn']];
   function selectTab(id) {
-    tabs.forEach(([t, p]) => {
-      const on = t === id;
-      $(t).setAttribute('aria-selected', String(on));
-      $(p).hidden = !on;
-    });
+    tabs.forEach(([t, p]) => { const on = t === id; $(t).setAttribute('aria-selected', String(on)); $(p).hidden = !on; });
     if (id === 'tab-learn' && !quizStarted) startQuiz();
   }
   $('tab-check').addEventListener('click', () => selectTab('tab-check'));
@@ -196,14 +233,8 @@
       msg: `Dear Customer,\nYour PayPal account has been suspended due to unusual sign-in activity.\nVerify your account within 24 hours to avoid permanent suspension:\nhttp://paypa1-secure.top/login`,
       hdr: `From: PayPal Service <service@paypa1-secure.top>\nReply-To: billing@secure-mail.xyz\nAuthentication-Results: spf=fail dkim=fail dmarc=fail`,
     },
-    giftcard: {
-      msg: `Hi, I'm in a meeting and can't talk. I need a quick favour — please buy 5 Google Play gift cards (AED 200 each) and send me the codes right away. I'll reimburse you later today.`,
-      hdr: '',
-    },
-    legit: {
-      msg: `Hi Zuhair, thanks for your order #12831. It shipped today and should arrive Thursday. You can track it anytime in the app.`,
-      hdr: '',
-    },
+    giftcard: { msg: `Hi, I'm in a meeting and can't talk. I need a quick favour — please buy 5 Google Play gift cards (AED 200 each) and send me the codes right away. I'll reimburse you later today.`, hdr: '' },
+    legit: { msg: `Hi Zuhair, thanks for your order #12831. It shipped today and should arrive Thursday. You can track it anytime in the app.`, hdr: '' },
   };
 
   let lastResult = null;
@@ -211,37 +242,28 @@
   function render(r) {
     lastResult = r;
     $('results').hidden = false;
-    const badge = $('badge');
-    badge.className = 'badge ' + r.band;
-    badge.textContent = VERDICT[r.band];
-    const bar = $('bar');
-    bar.style.width = r.score + '%';
-    bar.style.background = r.band === 'high' ? 'var(--high)' : r.band === 'caution' ? 'var(--caution)' : 'var(--low)';
-    $('score').textContent = `signal score ${r.score}/100 (heuristic)`;
-    $('summary').textContent = r.summary;
-    const action = $('action');
-    action.className = 'action ' + r.band;
-    action.textContent = ACTION[r.band];
+    $('verdict').className = 'verdict ' + CLS[r.band];
+    $('vmark').textContent = MARK[r.band];
+    $('vword').textContent = WORD[r.band];
+    $('vsummary').textContent = r.summary;
+    $('vaction').textContent = ACTION[r.band];
+    $('vmeta').textContent = `${r.signals.length} warning ${r.signals.length === 1 ? 'sign' : 'signs'} found · signal score ${r.score}/100 (a heuristic estimate, not a verdict)`;
 
     const sigBox = $('signals');
     if (!r.signals.length) {
-      sigBox.innerHTML = `<p class="empty">No specific warning patterns matched. That is reassuring but not proof of safety — read the limits below.</p>`;
+      sigBox.innerHTML = `<p class="empty" style="margin-top:18px">No specific warning patterns matched. Reassuring, but not proof it's safe — see the note below.</p>`;
     } else {
-      sigBox.innerHTML = r.signals.map((s) => `
+      sigBox.innerHTML = `<p class="sig-head">What looked wrong</p>` + r.signals.map((s) => `
         <details class="sig" ${s.severity === 'high' ? 'open' : ''}>
-          <summary>
-            <span class="lbl"><span class="dot ${s.severity}"></span><strong>${esc(s.label)}</strong></span>
-            <span class="sev">${s.severity}</span>
-          </summary>
+          <summary><span class="dot ${s.severity}"></span><strong>${esc(s.label)}</strong><span class="sev">${s.severity}</span></summary>
           <div class="body">
             <p>${esc(s.explanation)}</p>
-            <p class="advice">✅ <strong>What to do:</strong> ${esc(s.advice)}</p>
+            <p class="advice">What to do: ${esc(s.advice)}</p>
             ${s.evidence && s.evidence.length ? `<div class="evi">${s.evidence.map(esc).join('<br>')}</div>` : ''}
           </div>
         </details>`).join('');
     }
-    $('positives').innerHTML = (r.positives && r.positives.length)
-      ? `<p class="good">• ${r.positives.map(esc).join('<br>• ')}</p>` : '';
+    $('positives').innerHTML = (r.positives && r.positives.length) ? `<p class="good">${r.positives.map(esc).join('<br>')}</p>` : '';
     $('limits').innerHTML = r.limitations.map((l) => `<li>${esc(l)}</li>`).join('');
     $('results').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }
@@ -252,121 +274,90 @@
     render(analyzeMessage(text, { headers: $('hdr').value.trim() }));
   }
   $('analyze').addEventListener('click', analyze);
-  $('msg').addEventListener('keydown', (e) => {
-    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); analyze(); }
-  });
-  $('clear').addEventListener('click', () => {
-    $('msg').value = ''; $('hdr').value = ''; $('results').hidden = true;
-    if (window.speechSynthesis) speechSynthesis.cancel();
-    $('msg').focus();
-  });
-  document.querySelectorAll('.ex').forEach((b) => b.addEventListener('click', () => {
-    const e = EXAMPLES[b.dataset.ex];
-    $('msg').value = e.msg; $('hdr').value = e.hdr;
-    render(analyzeMessage(e.msg, { headers: e.hdr }));
-  }));
+  $('msg').addEventListener('keydown', (e) => { if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); analyze(); } });
+  $('clear').addEventListener('click', () => { $('msg').value = ''; $('hdr').value = ''; $('results').hidden = true; if (window.speechSynthesis) speechSynthesis.cancel(); $('msg').focus(); });
+  document.querySelectorAll('.ex').forEach((b) => b.addEventListener('click', () => { const e = EXAMPLES[b.dataset.ex]; $('msg').value = e.msg; $('hdr').value = e.hdr; render(analyzeMessage(e.msg, { headers: e.hdr })); }));
 
-  // ---------- Read aloud (accessibility; local, no network) ----------
+  // ---------- Read aloud ----------
   function plainSummary(r) {
-    const lines = [`SafeSignal result: ${VERDICT[r.band]}, signal score ${r.score} out of 100.`, r.summary];
-    if (r.signals.length) {
-      lines.push('Warning signs found:');
-      r.signals.forEach((s) => lines.push(`${s.label}. What to do: ${s.advice}`));
-    }
-    lines.push(ACTION[r.band].replace(/^[^ ]+ /, ''));
-    lines.push('This is a heuristic learning aid, not a guarantee. When in doubt, verify through a channel you already trust.');
+    const lines = [`SafeSignal result: ${WORD[r.band]}.`, r.summary];
+    if (r.signals.length) { lines.push('Warning signs found:'); r.signals.forEach((s) => lines.push(`${s.label}. What to do: ${s.advice}`)); }
+    lines.push(ACTION[r.band]);
+    lines.push('This is a learning aid, not a guarantee. When unsure, check through a channel you already trust.');
     return lines.join('\n');
   }
   if ('speechSynthesis' in window) {
-    const speak = $('speak');
-    speak.hidden = false;
+    const speak = $('speak'); speak.hidden = false;
     speak.addEventListener('click', () => {
       if (!lastResult) return;
-      if (speechSynthesis.speaking) { speechSynthesis.cancel(); speak.textContent = '🔊 Read aloud'; return; }
+      if (speechSynthesis.speaking) { speechSynthesis.cancel(); speak.textContent = '🔊 Read this to me'; return; }
       const u = new SpeechSynthesisUtterance(plainSummary(lastResult).replace(/\n/g, '. '));
-      u.rate = 0.98; u.onend = () => { speak.textContent = '🔊 Read aloud'; };
-      speak.textContent = '⏹ Stop';
-      speechSynthesis.speak(u);
+      u.rate = 0.98; u.onend = () => { speak.textContent = '🔊 Read this to me'; };
+      speak.textContent = '⏹ Stop'; speechSynthesis.speak(u);
     });
   }
 
-  // ---------- Copy shareable summary (community angle; local) ----------
+  // ---------- Copy a note to share ----------
   $('copy').addEventListener('click', async () => {
     if (!lastResult) return;
-    const text = plainSummary(lastResult) + '\n\n— checked with SafeSignal (runs locally, no data shared)';
+    const text = plainSummary(lastResult) + '\n\n— checked with SafeSignal (runs locally, nothing shared)';
     const btn = $('copy');
     try { await navigator.clipboard.writeText(text); }
     catch { const t = document.createElement('textarea'); t.value = text; document.body.appendChild(t); t.select(); document.execCommand('copy'); t.remove(); }
-    const old = btn.textContent; btn.textContent = '✅ Copied — paste it to a friend'; setTimeout(() => { btn.textContent = old; }, 2200);
+    const old = btn.textContent; btn.textContent = '✅ Copied — send it to them'; setTimeout(() => { btn.textContent = old; }, 2200);
   });
 
-  // ---------- Learn mode: "Spot the scam" (synthetic messages, local scoring) ----------
+  // ---------- Practice: spot the scam ----------
   const QUIZ = [
-    { msg: `Your parcel is held at customs. Pay the AED 15 clearance fee to release it: https://bit.ly/pkg-release`, scam: true,
-      lesson: 'An unexpected "pay a small fee" plus a shortened link that hides its destination is a classic delivery scam.' },
-    { msg: `Hi Zuhair, your order #55213 has shipped and should arrive Tuesday. Track it anytime in the app.`, scam: false,
-      lesson: 'No link, no request, and it matches something you actually did — a normal message.' },
-    { msg: `URGENT: unusual activity detected. Verify your account within 24 hours or it will be permanently closed: http://secure-login.top/verify`, scam: true,
-      lesson: 'Pressure ("within 24 hours"), a threat to close your account, and an odd web address together mean phishing.' },
-    { msg: `Reminder: your dentist appointment is tomorrow at 3pm. Reply YES to confirm, or call the clinic to reschedule.`, scam: false,
-      lesson: 'A simple reminder with a harmless reply and no link or payment request.' },
-    { msg: `I'm in a meeting and can't talk. Please buy 3 Apple gift cards and send me the codes right now — I'll pay you back.`, scam: true,
-      lesson: 'A "boss" or friend asking you to buy gift cards and send the codes is always a scam. Gift cards can’t be reversed.' },
-    { msg: `Your one-time login code is 448221. Enter it on the sign-in screen. We will never ask you to share this code.`, scam: false,
-      lesson: 'Real codes are for YOU to enter. Legitimate senders explicitly tell you never to share them.' },
-    { msg: `Hello, our bank account details have changed. Please pay the outstanding invoice to the new account number below.`, scam: true,
-      lesson: 'A sudden "our bank details changed, pay the new account" message redirects your payment to a fraudster (invoice fraud).' },
-    { msg: `Security notice: criminals may try to scam you out of your money. We will never ask for your PIN. This is not a scam.`, scam: false,
-      lesson: 'The word "scam" does not make a message a scam — this is a genuine safety warning, not an attack.' },
+    { msg: `Your parcel is held at customs. Pay the AED 15 clearance fee to release it: https://bit.ly/pkg-release`, scam: true, lesson: 'An unexpected "pay a small fee" plus a shortened link that hides where it leads is a classic delivery scam.' },
+    { msg: `Hi Zuhair, your order #55213 has shipped and should arrive Tuesday. Track it anytime in the app.`, scam: false, lesson: 'No link, no request, and it matches something you actually did — a normal message.' },
+    { msg: `URGENT: unusual activity detected. Verify your account within 24 hours or it will be permanently closed: http://secure-login.top/verify`, scam: true, lesson: 'Pressure ("within 24 hours"), a threat to close your account, and an odd web address together mean phishing.' },
+    { msg: `Reminder: your dentist appointment is tomorrow at 3pm. Reply YES to confirm, or call the clinic to reschedule.`, scam: false, lesson: 'A simple reminder with a harmless reply and no link or payment request.' },
+    { msg: `I'm in a meeting and can't talk. Please buy 3 Apple gift cards and send me the codes right now — I'll pay you back.`, scam: true, lesson: 'A "boss" or friend asking you to buy gift cards and send the codes is always a scam. Gift cards can’t be reversed.' },
+    { msg: `Your one-time login code is 448221. Enter it on the sign-in screen. We will never ask you to share this code.`, scam: false, lesson: 'Real codes are for YOU to enter. Legitimate senders explicitly tell you never to share them.' },
+    { msg: `Hello, our bank account details have changed. Please pay the outstanding invoice to the new account number below.`, scam: true, lesson: 'A sudden "our bank details changed, pay the new account" message redirects your payment to a fraudster.' },
+    { msg: `Security notice: criminals may try to scam you out of your money. We will never ask for your PIN. This is not a scam.`, scam: false, lesson: 'The word "scam" does not make a message a scam — this is a genuine safety warning, not an attack.' },
   ];
   let quizStarted = false, qi = 0, qScore = 0, qAnswered = false;
-
   function startQuiz() { quizStarted = true; qi = 0; qScore = 0; qAnswered = false; renderQuestion(); }
-
   function renderQuestion() {
     if (qi >= QUIZ.length) return renderQuizEnd();
     qAnswered = false;
-    $('quiz-progress').textContent = `Question ${qi + 1} of ${QUIZ.length} · score ${qScore}/${qi}`;
+    $('quiz-progress').textContent = `Message ${qi + 1} of ${QUIZ.length} · score ${qScore}/${qi}`;
     $('quiz-body').innerHTML = `
-      <p style="margin:0 0 10px;font-weight:600">You receive this message. Scam, or safe?</p>
-      <div class="quiz-msg">${esc(QUIZ[qi].msg)}</div>
+      <p class="q-prompt">You get this message. Is it safe, or a scam?</p>
+      <div class="q-msg">${esc(QUIZ[qi].msg)}</div>
       <div class="choices">
         <button type="button" data-guess="safe">👍 Looks safe</button>
         <button type="button" data-guess="scam">🚩 Looks like a scam</button>
       </div>
       <div id="quiz-reveal"></div>`;
-    $('quiz-body').querySelectorAll('[data-guess]').forEach((b) =>
-      b.addEventListener('click', () => answer(b.dataset.guess === 'scam')));
+    $('quiz-body').querySelectorAll('[data-guess]').forEach((b) => b.addEventListener('click', () => answer(b.dataset.guess === 'scam')));
   }
-
   function answer(guessScam) {
-    if (qAnswered) return;
-    qAnswered = true;
-    const item = QUIZ[qi];
-    const correct = guessScam === item.scam;
-    if (correct) qScore++;
+    if (qAnswered) return; qAnswered = true;
+    const item = QUIZ[qi], correct = guessScam === item.scam; if (correct) qScore++;
     const r = analyzeMessage(item.msg);
     $('quiz-body').querySelectorAll('[data-guess]').forEach((b) => (b.disabled = true));
     $('quiz-reveal').innerHTML = `
       <div class="reveal ${correct ? 'right' : 'wrong'}">
-        <p class="verdictline">${correct ? '✅ Correct' : '❌ Not quite'} — this one is ${item.scam ? 'a scam' : 'safe'}.</p>
-        <p style="margin:0 0 8px"><strong>SafeSignal says:</strong> ${VERDICT[r.band]}${r.signals.length ? ' — ' + esc(r.signals.map((s) => s.label.toLowerCase()).slice(0, 3).join(', ')) : ' — no warning patterns'}.</p>
-        <p style="margin:0 0 12px;color:var(--muted)">💡 ${esc(item.lesson)}</p>
-        <button type="button" class="primary" id="quiz-next">${qi + 1 < QUIZ.length ? 'Next question →' : 'See my score →'}</button>
+        <p class="vline">${correct ? '✓ Correct' : '✗ Not quite'} — this one is ${item.scam ? 'a scam' : 'safe'}.</p>
+        <p style="margin:0 0 8px"><strong>SafeSignal reads it as:</strong> ${WORD[r.band]}${r.signals.length ? ' — ' + esc(r.signals.map((s) => s.label.toLowerCase()).slice(0, 3).join(', ')) : ' — no warning patterns'}.</p>
+        <p class="lesson">${esc(item.lesson)}</p>
+        <button type="button" class="primary" id="quiz-next">${qi + 1 < QUIZ.length ? 'Next message' : 'See my score'}</button>
       </div>`;
-    $('quiz-progress').textContent = `Question ${qi + 1} of ${QUIZ.length} · score ${qScore}/${qi + 1}`;
+    $('quiz-progress').textContent = `Message ${qi + 1} of ${QUIZ.length} · score ${qScore}/${qi + 1}`;
     $('quiz-next').addEventListener('click', () => { qi++; renderQuestion(); });
   }
-
   function renderQuizEnd() {
     const pct = Math.round((qScore / QUIZ.length) * 100);
-    const note = pct >= 88 ? 'Sharp eye — you spot the hallmarks well.' : pct >= 62 ? 'Good instinct. Keep watching for urgency, odd links, and money requests.' : 'Scams fool lots of people — the patterns above are the ones to remember.';
-    $('quiz-progress').textContent = 'Finished';
+    const note = pct >= 88 ? 'Sharp eye — you catch the hallmarks well.' : pct >= 62 ? 'Good instinct. Keep watching for urgency, odd links, and money requests.' : 'Scams fool lots of people — the patterns above are the ones to remember.';
+    $('quiz-progress').textContent = 'Done';
     $('quiz-body').innerHTML = `
-      <p class="score-big">You scored ${qScore} / ${QUIZ.length}</p>
+      <p class="score-big">You scored ${qScore} out of ${QUIZ.length}</p>
       <p style="color:var(--muted)">${note}</p>
-      <p style="color:var(--muted)">The same checks run on the <strong>Check a message</strong> tab — paste a real message there anytime.</p>
-      <div class="row"><button type="button" class="primary" id="quiz-again">Play again</button>
+      <p style="color:var(--muted)">The same checks run on <strong>Check a message</strong> — paste a real one there anytime.</p>
+      <div class="actions"><button type="button" class="primary" id="quiz-again">Play again</button>
         <button type="button" id="quiz-tocheck">Check a real message</button></div>`;
     $('quiz-again').addEventListener('click', startQuiz);
     $('quiz-tocheck').addEventListener('click', () => selectTab('tab-check'));
