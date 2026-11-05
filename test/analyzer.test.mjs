@@ -164,6 +164,51 @@ test('Past-tense "I already sent you the money" is NOT a money request => low', 
   assert.equal(r.band, 'low');
 });
 
+test('Arrest/fine threat (authority impersonation) => threat-demand, high', () => {
+  const r = analyzeMessage('Final notice: pay your overdue tax fine of AED 2000 or a warrant will be issued for your arrest.');
+  assert.ok(hasSignal(r, 'threat-demand'));
+  assert.equal(r.band, 'high');
+});
+
+test('Invoice / BEC "bank details changed" => bank-change, high', () => {
+  const r = analyzeMessage('Hi, our bank account details have changed. Please pay the outstanding invoice to the new account number below.');
+  assert.ok(hasSignal(r, 'bank-change'));
+  assert.equal(r.band, 'high');
+});
+
+test('Reverse-OTP "read back the code we sent" => otp-harvest, high', () => {
+  const r = analyzeMessage('This is your bank security team. Please read back the 6-digit code we just sent to your phone.');
+  assert.ok(hasSignal(r, 'otp-harvest'));
+  assert.equal(r.band, 'high');
+});
+
+test('Legit OTP "do not share it" is NOT otp-harvest => low', () => {
+  const r = analyzeMessage('Your verification code is 834512. It expires in 10 minutes. Do not share it with anyone.');
+  assert.equal(hasSignal(r, 'otp-harvest'), false);
+  assert.equal(r.band, 'low');
+});
+
+test('Prize / lottery bait reaches at least caution', () => {
+  const r = analyzeMessage('Congratulations! You have won $1,000,000. Claim your prize now.');
+  assert.ok(hasSignal(r, 'too-good-or-bait'));
+  assert.ok(r.band === 'caution' || r.band === 'high');
+});
+
+test('Work-from-home job bait reaches at least caution', () => {
+  const r = analyzeMessage('Work from home and earn $500 per day. Reply to start.');
+  assert.ok(r.band === 'caution' || r.band === 'high');
+});
+
+test('Benign "congratulations on your order" does NOT over-escalate => low', () => {
+  const r = analyzeMessage('Congratulations! Your order is confirmed and on its way.');
+  assert.equal(r.band, 'low');
+});
+
+test('Tech-support fake-charge callback reaches at least caution', () => {
+  const r = analyzeMessage('Your Norton subscription renewed for $499. To cancel call +1 888 555 0101.');
+  assert.ok(r.band === 'caution' || r.band === 'high');
+});
+
 test('Signals are sorted most-severe first', () => {
   const msg = `Dear Customer, URGENT: verify your account and confirm your password here: http://paypa1-secure.top/login`;
   const r = analyzeMessage(msg);

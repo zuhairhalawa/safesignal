@@ -274,25 +274,75 @@ export function analyzeMessage(text, opts = {}) {
   const phoneHit = raw.match(phoneRe);
   if (phoneHit && callbackCtx.test(lc)) {
     add({
-      id: 'callback-scam', label: 'A phone number plus a charge / refund hook', severity: 'medium', weight: 18,
+      id: 'callback-scam', label: 'A phone number plus a charge / refund hook', severity: 'medium', weight: 20,
       explanation: 'Fake-charge, "your subscription renewed", and tech-support scams push you to phone a number so a person can pressure you in real time. The number belongs to the scammer, not the company.',
       advice: 'Do not call numbers from unexpected messages. If worried about a charge, use the official number on your card, app, or a receipt you already trust.',
       evidence: [phoneHit[0].trim(), (lc.match(callbackCtx) || [''])[0]].filter(Boolean),
     });
   }
 
-  // 5) Prize / lottery / inheritance / job-bait
-  const lure = anyMatch(lc, [
-    /you(?:'| ha)?ve won/, /congratulations[.! ]/, /claim your (prize|reward|refund)/, /lottery/, /inheritance/,
-    /beneficiary/, /you have been selected/, /work from home .*(\$|aed|usd)/, /earn \$?\d+ ?(per|a|\/) ?(day|week|hour)/,
-    /tax refund/, /parcel (is )?(waiting|held|on hold)/, /delivery (failed|attempt)/, /customs (fee|charge)/,
+  // 5) Prize / lottery / job / delivery bait (strong hooks weigh more than a bare "congrats")
+  const strongLure = anyMatch(lc, [
+    /you(?:'| ha)?ve won/, /claim your (prize|reward|winnings)/, /lottery/, /inheritance/, /beneficiary/,
+    /you have been selected (to|for|as)/, /work from home .*(\$|aed|usd|income)/,
+    /earn \$?\d+ ?(per|a|\/) ?(day|week|hour)/, /parcel (is )?(waiting|held|on hold)/,
+    /delivery (failed|attempt|is on hold)/, /customs (fee|charge|clearance)/,
   ]);
-  if (lure.length) {
+  const weakLure = anyMatch(lc, [/congratulations[.! ]/, /claim your refund/, /tax refund/, /limited time offer/]);
+  if (strongLure.length || weakLure.length) {
     add({
-      id: 'too-good-or-bait', label: 'Prize, refund, or delivery bait', severity: 'medium', weight: 16,
-      explanation: 'Unexpected winnings, refunds, or "held parcel" messages are classic hooks to get you to click or pay a small "fee".',
-      advice: 'If you did not enter or order, you did not win or miss a delivery. Verify with the courier/retailer directly.',
-      evidence: lure.slice(0, 4),
+      id: 'too-good-or-bait', label: 'Prize, refund, job, or delivery bait',
+      severity: strongLure.length ? 'medium' : 'low',
+      weight: Math.min(28, (strongLure.length ? 12 : 6) + strongLure.length * 7 + weakLure.length * 3),
+      explanation: 'Unexpected winnings, refunds, "held parcel", or easy-money job offers are classic hooks to get you to click, pay a small "fee", or hand over details.',
+      advice: 'If you did not enter, order, or apply, treat it as bait. Verify with the courier/retailer/employer directly.',
+      evidence: [...strongLure, ...weakLure].slice(0, 4),
+    });
+  }
+
+  // 5b) Threat of arrest / legal action / penalty (authority-impersonation scare)
+  const threat = anyMatch(lc, [
+    /warrant.{0,20}(arrest|issued)/, /face (arrest|prosecution|legal action|deportation|court)/,
+    /(legal action|lawsuit|court case|police report) (will|may|could) be (taken|filed|issued)/,
+    /pay .{0,25}(fine|penalty|overdue (tax|amount))/, /overdue (tax|fine|payment).{0,30}(arrest|warrant|legal|court)/,
+    /your (ssn|social security|emirates id|national id) (has been |is )?(suspended|blocked|frozen)/,
+  ]);
+  if (threat.length) {
+    add({
+      id: 'threat-demand', label: 'Threat of arrest, legal action, or penalty', severity: 'high', weight: 22,
+      explanation: 'Scammers impersonate tax authorities, police, or courts and threaten arrest, fines, or legal action to scare you into paying or sharing details. Real agencies do not demand payment by text or email under threat.',
+      advice: 'Do not pay or respond. Contact the agency directly using an official number you look up yourself.',
+      evidence: threat.slice(0, 4),
+    });
+  }
+
+  // 5c) "Our bank details have changed" — invoice / business-email-compromise
+  const bankChange = anyMatch(lc, [
+    /bank (account )?(details|detail|info|information|number) (have|has|is|are|were)? ?(now )?(changed|updated|different)/,
+    /(new|updated|changed|different) (bank |payment )?(account|iban|routing) (number|details|info)/,
+    /(remit|pay|send|transfer) .{0,40}(new|updated|below) account/,
+    /change (of|in) (our |the )?(bank|payment) details/,
+  ]);
+  if (bankChange.length) {
+    add({
+      id: 'bank-change', label: 'Claims the bank / payment details have changed', severity: 'high', weight: 24,
+      explanation: 'A sudden "our bank details have changed, pay to this new account" message is a classic invoice / business-email-compromise scam that redirects your payment to the fraudster.',
+      advice: 'Never trust changed payment details from a message. Verify with the company using a known contact before paying anything.',
+      evidence: bankChange.slice(0, 4),
+    });
+  }
+
+  // 5d) Reverse-OTP harvesting ("read back the code we sent you")
+  const otpHarvest = anyMatch(lc, [
+    /(read|tell|share|confirm|repeat|give|provide|send)(?: me| us| back)?(?: the| your)? ?(?:\d[\s-]?digit )?(?:code|otp|one[\s-]?time (?:code|password|pin|passcode)|verification code|security code|pin)\b.{0,40}(?:we|that was|just|been) ?(?:just )?(?:sent|texted|emailed|messaged)/,
+    /(?:code|otp|verification code).{0,20}(?:we|just) (?:just )?sent.{0,30}(?:read|tell|share|confirm|repeat|give|provide)/,
+  ]);
+  if (otpHarvest.length) {
+    add({
+      id: 'otp-harvest', label: 'Asks you to read back a code that was sent to you', severity: 'high', weight: 26,
+      explanation: 'A real company never asks you to read back a one-time code it sent you. Scammers trigger the code (e.g. a password reset) and ask you to relay it so they can take over your account.',
+      advice: 'Never share a one-time code with anyone, even someone claiming to be support. The code is for you to enter yourself.',
+      evidence: otpHarvest.slice(0, 3),
     });
   }
 
@@ -357,6 +407,7 @@ export function analyzeMessage(text, opts = {}) {
   // signal from the critical set is present, OR two+ high-severity signals stack.
   const CRITICAL_HIGH = new Set([
     'credential-request', 'risky-links', 'payment-lure', 'attachment-risk', 'auth-fail', 'link-mismatch', 'money-request',
+    'threat-demand', 'bank-change', 'otp-harvest',
   ]);
   const highSev = signals.filter((s) => s.severity === 'high');
   let band = 'low';
