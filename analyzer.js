@@ -131,6 +131,18 @@ function extractLinkPairs(raw) {
   return pairs;
 }
 
+// Un-disguise defanged / obfuscated links ("paypal[.]com", "paypal dot com", "hxxp://").
+function deobfuscate(s) {
+  return String(s)
+    .replace(/\s*[[({]\s*\.\s*[\])}]\s*/g, '.')            // [.] (.) {.}
+    .replace(/\s*[[({]\s*dot\s*[\])}]\s*/gi, '.')          // [dot] (dot)
+    .replace(/\b(\w+)\s+dot\s+(com|net|org|io|co|info|xyz|top|link|me|ru|cn|ae|site|online)\b/gi, '$1.$2')
+    .replace(/\s+slash\s+/gi, '/')
+    .replace(/h\s*x\s*x\s*p(s?)\s*:/gi, 'http$1:')         // hxxp(s):
+    .replace(/\s*\[\s*:\s*\]\s*/g, ':');                   // [:]
+}
+const OBFUSC_RE = /[[({]\s*\.\s*[\])}]|[[({]\s*dot\s*[\])}]|\b\w+\s+dot\s+(?:com|net|org|io|co|info|xyz|top|link|me|ru|cn|ae|site|online)\b|\bh\s*x\s*x\s*ps?\b|\[\s*:\s*\]/i;
+
 export function analyzeMessage(text, opts = {}) {
   const headers = opts.headers || '';
   const raw = String(text || '');
@@ -202,8 +214,19 @@ export function analyzeMessage(text, opts = {}) {
     });
   }
 
-  // 3) URL risks
-  const urls = extractUrls(raw);
+  // 2c) Disguised / defanged web address ("paypal[.]com", "paypal dot com", "hxxp")
+  const deobf = deobfuscate(raw);
+  if (OBFUSC_RE.test(raw)) {
+    add({
+      id: 'obfuscated-link', label: 'A disguised / obfuscated web address', severity: 'high', weight: 22,
+      explanation: 'Writing an address as "paypal[.]com", "paypal dot com", or "hxxp://" is done to slip a malicious link past filters and your eye. Legitimate messages write links normally.',
+      advice: 'Do not reconstruct or visit the address. The disguise itself is the warning.',
+      evidence: [(raw.match(OBFUSC_RE) || [''])[0].trim()].filter(Boolean),
+    });
+  }
+
+  // 3) URL risks (check both the raw text and the de-obfuscated version)
+  const urls = [...new Set([...extractUrls(raw), ...extractUrls(deobf)])];
   const urlEvidence = [];
   let urlWeight = 0;
   for (const url of urls) {
@@ -239,8 +262,10 @@ export function analyzeMessage(text, opts = {}) {
 
   // 4) Gift-card / crypto / wire lures
   const payLure = anyMatch(lc, [
-    /gift ?cards?/, /google play card/, /steam card/, /itunes card/, /bitcoin|btc|usdt|crypto(currency)?/,
+    /gift ?cards?/, /google play card/, /steam card/, /itunes card/,
+    /bitcoin|btc|usdt|crypto(currency)?|ethereum|\beth\b|solana|\bsol\b|dogecoin|\bdoge\b|\bxrp\b|\bbnb\b|usdc|tether/,
     /wire transfer/, /western union/, /moneygram/, /send (money|payment) to/, /pay a (fee|fine) to release/,
+    /send .{0,30}(eth|btc|bitcoin|crypto|coins?) .{0,30}(back|return|double)/, /\b(giveaway|airdrop)\b/,
   ]);
   if (payLure.length) {
     add({
@@ -270,7 +295,7 @@ export function analyzeMessage(text, opts = {}) {
 
   // 4b) "Call this number" vishing (fake-charge / tech-support / refund scams)
   const phoneRe = /\+?\d[\d\s().-]{6,}\d/;
-  const callbackCtx = /charged|subscription|renew(ed|al|s)?|auto-?renew|refund|invoice|to cancel|cancel (?:your|this|the)|call (?:this|the|our|us|now|immediately|toll)|support (?:team|line|number)|antivirus|norton|mcafee|geek squad/i;
+  const callbackCtx = /charged?|subscription|renew(ed|al|s)?|auto-?renew|refund|invoice|to cancel|cancel (?:your|this|the)|call (?:this|the|our|us|now|immediately|toll)|support (?:team|line|number)|antivirus|norton|mcafee|geek squad|did ?n[o']?t authori[sz]e|unauthori[sz]ed|payment of \$?\d|charge of \$?\d|suspicious (?:payment|transaction|charge)/i;
   const phoneHit = raw.match(phoneRe);
   if (phoneHit && callbackCtx.test(lc)) {
     add({
@@ -285,8 +310,9 @@ export function analyzeMessage(text, opts = {}) {
   const strongLure = anyMatch(lc, [
     /you(?:'| ha)?ve won/, /claim your (prize|reward|winnings)/, /lottery/, /inheritance/, /beneficiary/,
     /you have been selected (to|for|as)/, /work from home .*(\$|aed|usd|income)/,
-    /earn \$?\d+ ?(per|a|\/) ?(day|week|hour)/, /parcel (is )?(waiting|held|on hold)/,
-    /delivery (failed|attempt|is on hold)/, /customs (fee|charge|clearance)/,
+    /earn \$?\d+\s?(?:usd|aed|eur|gbp|dollars|dirhams)?\s?(?:per|a|each|\/)\s?(?:day|week|hour|task)/,
+    /daily payouts/, /complete .{0,20}tasks? .{0,25}(earn|get paid|commission)/,
+    /parcel (is )?(waiting|held|on hold)/, /delivery (failed|attempt|is on hold)/, /customs (fee|charge|clearance)/,
   ]);
   const weakLure = anyMatch(lc, [/congratulations[.! ]/, /claim your refund/, /tax refund/, /limited time offer/]);
   if (strongLure.length || weakLure.length) {
@@ -343,6 +369,46 @@ export function analyzeMessage(text, opts = {}) {
       explanation: 'A real company never asks you to read back a one-time code it sent you. Scammers trigger the code (e.g. a password reset) and ask you to relay it so they can take over your account.',
       advice: 'Never share a one-time code with anyone, even someone claiming to be support. The code is for you to enter yourself.',
       evidence: otpHarvest.slice(0, 3),
+    });
+  }
+
+  // 5e) Investment / "guaranteed returns" fraud
+  const invest = anyMatch(lc, [
+    /guaranteed (returns?|profit|roi|income)/, /double your (money|investment|capital|funds)/,
+    /risk[\s-]?free (investment|returns?|profit)/, /\d+% ?(daily|weekly|monthly|guaranteed) (returns?|profit|roi)/,
+    /high[\s-]?return investment/, /(invest|deposit) .{0,25}(and|to) (earn|get|receive|double)/,
+  ]);
+  if (invest.length) {
+    add({
+      id: 'investment-scam', label: '"Guaranteed returns" investment pitch', severity: 'high', weight: 22,
+      explanation: 'Promises of guaranteed, risk-free, or fixed high returns ("double your money", "25% monthly") are the signature of investment and crypto scams. No real investment guarantees returns.',
+      advice: 'Treat any guaranteed-return or "double your money" offer as a scam. Never send funds or crypto to join.',
+      evidence: invest.slice(0, 4),
+    });
+  }
+
+  // 5f) Service-cutoff pressure (utility / telecom / account suspension unless you pay)
+  const serviceThreat = anyMatch(lc, [
+    /(electricity|power|water|gas|internet|service|account|number|sim) (will be|is about to be|to be) (disconnected|suspended|cut off|deactivated|terminated|blocked)/,
+    /(disconnect|suspend|deactivate|terminate|block) .{0,30}(unless|until|if you (do not|don'?t)) (pay|verify|confirm|update)/,
+    /avoid (disconnection|suspension|service interruption|deactivation)/,
+  ]);
+  if (serviceThreat.length) {
+    add({
+      id: 'service-threat', label: 'Threat to cut off a service unless you pay/verify', severity: 'medium', weight: 18,
+      explanation: 'Scammers impersonate utilities, telecoms, or banks and threaten to disconnect your service unless you pay or verify immediately. Real providers give notice and use official channels.',
+      advice: 'Do not pay or click. Check your account through the provider’s official app or a bill you already have.',
+      evidence: serviceThreat.slice(0, 3),
+    });
+  }
+
+  // 5g) QR-code lure ("quishing")
+  if (/scan (?:the |this )?qr(?: code)?/i.test(raw) && /verify|validate|re-?validate|confirm|bank|account|login|log ?in|payment|wallet|\bpay\b/i.test(lc)) {
+    add({
+      id: 'qr-lure', label: 'Asks you to scan a QR code to verify or pay', severity: 'medium', weight: 20,
+      explanation: '"Quishing" hides a malicious link inside a QR code, bypassing your eye and some filters, and sends you to a fake login or payment page.',
+      advice: 'Do not scan QR codes from unexpected messages. Reach the service through its official app or website.',
+      evidence: ['QR-code request combined with a verify/pay instruction'],
     });
   }
 
@@ -407,7 +473,7 @@ export function analyzeMessage(text, opts = {}) {
   // signal from the critical set is present, OR two+ high-severity signals stack.
   const CRITICAL_HIGH = new Set([
     'credential-request', 'risky-links', 'payment-lure', 'attachment-risk', 'auth-fail', 'link-mismatch', 'money-request',
-    'threat-demand', 'bank-change', 'otp-harvest',
+    'threat-demand', 'bank-change', 'otp-harvest', 'obfuscated-link', 'investment-scam',
   ]);
   const highSev = signals.filter((s) => s.severity === 'high');
   let band = 'low';

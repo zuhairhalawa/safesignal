@@ -37,7 +37,7 @@ Everything below is drafted for the Devpost project page. The **build is complet
 The riskiest moment in everyday digital life is the message you hesitate to click. Non-experts can't easily tell a scam from a real message, generic advice ("be careful") doesn't help, and pasting private messages into online checkers leaks them. I wanted a tool that *teaches* the warning signs on the spot and keeps the message private.
 
 **What it does**
-Paste an email/SMS (and optionally raw headers). SafeSignal returns an honest band — Low signal / Caution / Likely scam — leads with a plain **recommended action**, and lists the specific signals it found (most serious first): urgency/threats, password/OTP/card requests, **link text that doesn't match its real destination**, disguised/look-alike and **homograph** links, direct money requests, gift-card/crypto demands, **arrest/fine threats**, **"bank details changed" (BEC)**, **"read back the code we sent" (reverse-OTP)**, **"call this number" vishing**, prize/job/parcel bait, risky attachments, **hidden zero-width characters**, and (from headers) Reply-To mismatch and SPF/DKIM/DMARC failures. Each signal explains *why* it's suspicious and *what to do*, with the exact evidence shown. The detector set was hardened with an adversarial QA pass over 15 realistic scam types (31 automated tests pass).
+Paste an email/SMS (and optionally raw headers). SafeSignal returns an honest band — Low signal / Caution / Likely scam — leads with a plain **recommended action**, and lists the specific signals it found (most serious first): urgency/threats, password/OTP/card requests, **link text that doesn't match its real destination**, disguised/look-alike and **homograph** links, direct money requests, gift-card/crypto demands, **arrest/fine threats**, **"bank details changed" (BEC)**, **"read back the code we sent" (reverse-OTP)**, **"call this number" vishing**, prize/job/parcel bait, risky attachments, **hidden zero-width characters**, and (from headers) Reply-To mismatch and SPF/DKIM/DMARC failures. Each signal explains *why* it's suspicious and *what to do*, with the exact evidence shown. The detector set was hardened across two adversarial QA passes over 25 realistic scam types (42 automated tests pass).
 
 **How I built it**
 Pure client-side JavaScript. The detection engine (`analyzer.js`) is one source of truth used by both the UI (`index.html`) and an automated test suite (`node --test`, 12 tests). No frameworks, no backend, no network calls — privacy is enforced by architecture, not by a promise.
@@ -101,7 +101,7 @@ Paste that repo URL into the Devpost "Try it out" field.
 
 ## Final pre-submit checklist
 - [ ] Eligibility confirmed: current student + UAE legal age of majority + no geographic exclusion (see top of this file).
-- [ ] `node --test` → **31 passing** on your machine.
+- [ ] `node --test` → **42 passing** on your machine.
 - [ ] App opens at `http://localhost:8077/` and the three example buttons work.
 - [ ] Repo pushed and public; URL added to Devpost.
 - [ ] Project page filled from the fields above; `screenshots/01–03` uploaded.

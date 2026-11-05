@@ -209,6 +209,69 @@ test('Tech-support fake-charge callback reaches at least caution', () => {
   assert.ok(r.band === 'caution' || r.band === 'high');
 });
 
+test('Defanged "paypal dot com" link => obfuscated-link, high', () => {
+  const r = analyzeMessage('Go to paypal dot com slash verify now to keep your account active.');
+  assert.ok(hasSignal(r, 'obfuscated-link'));
+  assert.equal(r.band, 'high');
+});
+
+test('Bracket-defanged "paypal[.]com-secure[.]top" => obfuscated + risky link', () => {
+  const r = analyzeMessage('Verify at paypal[.]com-secure[.]top/login or lose access.');
+  assert.ok(hasSignal(r, 'obfuscated-link'));
+  assert.ok(hasSignal(r, 'risky-links'));
+  assert.equal(r.band, 'high');
+});
+
+test('Guaranteed-returns investment pitch => investment-scam, high', () => {
+  const r = analyzeMessage('Join our VIP group for guaranteed 25% monthly returns. Double your money risk-free.');
+  assert.ok(hasSignal(r, 'investment-scam'));
+  assert.equal(r.band, 'high');
+});
+
+test('Utility disconnection threat => service-threat, at least caution', () => {
+  const r = analyzeMessage('URGENT: Your electricity will be disconnected today unless you pay AED 320 immediately.');
+  assert.ok(hasSignal(r, 'service-threat'));
+  assert.ok(r.band === 'caution' || r.band === 'high');
+});
+
+test('Unauthorized-payment phish with a phone number => callback-scam', () => {
+  const r = analyzeMessage('We detected a payment of $729.00 to Best Buy. If you did not authorize this, call +1 800 555 0144.');
+  assert.ok(hasSignal(r, 'callback-scam'));
+});
+
+test('Crypto giveaway (ETH) => payment-lure, high', () => {
+  const r = analyzeMessage('Elon Musk giveaway! Send 0.5 ETH to this address and receive 1 ETH back instantly.');
+  assert.ok(hasSignal(r, 'payment-lure'));
+  assert.equal(r.band, 'high');
+});
+
+test('QR "quishing" to re-validate a bank account => qr-lure, at least caution', () => {
+  const r = analyzeMessage('Scan the QR code below to re-validate your bank account.');
+  assert.ok(hasSignal(r, 'qr-lure'));
+  assert.ok(r.band === 'caution' || r.band === 'high');
+});
+
+test('"earn 50 USD per hour" task bait => at least caution', () => {
+  const r = analyzeMessage('Complete simple tasks on Telegram and earn 50 USD per hour. Daily payouts.');
+  assert.ok(r.band === 'caution' || r.band === 'high');
+});
+
+// Round-2 false-positive guards (all must stay low)
+test('Legit password-reset link to a real domain stays low', () => {
+  const r = analyzeMessage('You requested a password reset. Click to continue: https://accounts.google.com/reset?token=abc123');
+  assert.equal(r.band, 'low');
+});
+
+test('Legit spend alert ("call the number on your card", no number) stays low', () => {
+  const r = analyzeMessage('You spent AED 200.00 at Carrefour today. Not you? Call the number on the back of your card.');
+  assert.equal(r.band, 'low');
+});
+
+test('Legit 2FA code ("we will never ask you to share it") stays low', () => {
+  const r = analyzeMessage('Your one-time code is 448221. Enter it on the login screen. We will never ask you to share it.');
+  assert.equal(r.band, 'low');
+});
+
 test('Signals are sorted most-severe first', () => {
   const msg = `Dear Customer, URGENT: verify your account and confirm your password here: http://paypa1-secure.top/login`;
   const r = analyzeMessage(msg);

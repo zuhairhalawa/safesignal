@@ -24,12 +24,16 @@ The intended user is an everyday person; the safer outcome is that they understa
 - **Link text that doesn't match its real destination** (HTML/markdown links)
 - Disguised links: look-alike/typosquatted brand domains, link shorteners, raw-IP URLs, punycode, `@` tricks, abused TLDs, non-HTTPS
 - **Homograph / internationalised look-alike domains** (non-Latin characters that imitate a real brand)
+- **Disguised / defanged addresses** (`paypal[.]com`, `paypal dot com`, `hxxp://`) — de-obfuscated and flagged
 - **Direct requests to send money / cash / a transfer** (even without a named method)
-- Unusual payment demands (gift cards, crypto, wire)
+- Unusual payment demands (gift cards, wire, and crypto — BTC/ETH/USDT/etc. and "send X get Y back" giveaways)
+- **"Guaranteed returns" investment fraud** ("double your money", "25% monthly", risk-free)
 - **Threats of arrest, legal action, or fines** (tax/police/court impersonation)
+- **Service-cutoff threats** (utility/telecom "pay or be disconnected")
 - **"Our bank details have changed"** invoice / business-email-compromise
 - **"Read back the code we sent you"** reverse-OTP account-takeover
-- **"Call this number" vishing** (fake-charge / tech-support / refund scams)
+- **QR-code "quishing"** (scan-to-verify / scan-to-pay)
+- **"Call this number" vishing** (fake-charge / tech-support / refund / unauthorized-payment scams)
 - Prize / refund / job / "held parcel" bait (weighted so a bare "congrats" doesn't over-flag)
 - Risky attachments and "enable macros" requests
 - **Hidden zero-width characters** used to split keywords and dodge filters
@@ -61,9 +65,9 @@ cd safespace
 node --test
 ```
 
-31 tests pass. Synthetic scam samples — phishing, gift-card, parcel, macro-malware, spoofed headers, HTML/markdown link-mismatch, homograph domain, tech-support/refund vishing, hidden-character obfuscation, direct money requests ("send money now" / "wire me $500"), arrest/fine threats, "bank details changed" (BEC), and reverse-OTP ("read back the code") — rank Caution/High. Synthetic legitimate samples — order confirmation, appointment reminder, real-brand link, matching link text, benign "call the clinic", past-tense "I already sent you the money", a real one-time-code message with "do not share it", and "congratulations on your order" — stay Low and are explicitly guarded against false positives. Plus unit tests for URL extraction, brand look-alike detection, score bounds, and severity ordering. All samples are **synthetic / author-created** — no real personal data, per the event rules.
+42 tests pass. Synthetic scam samples cover phishing, gift-card, parcel, macro-malware, spoofed headers, link-mismatch, homograph and defanged/obfuscated domains, direct money requests, crypto giveaways, "guaranteed returns" investment fraud, arrest/fine threats, utility service-cutoff threats, BEC "bank details changed", reverse-OTP, QR quishing, vishing, and job/task bait — all rank Caution/High. Synthetic legitimate samples — order confirmation, appointment reminder, real-brand links, matching link text, password-reset to a real domain, a bank spend-alert, a real one-time-code message, "congratulations on your order", and an anti-scam PSA — stay Low and are explicitly guarded against false positives. Plus unit tests for URL extraction, brand look-alike detection, score bounds, and severity ordering. All samples are **synthetic / author-created** — no real personal data, per the event rules.
 
-The tool was hardened with an adversarial QA pass across 15 realistic scam archetypes and 6 legitimate messages (all now classified correctly).
+The tool was hardened across **two adversarial QA passes** (25 realistic scam archetypes + 13 legitimate messages); every case is now classified correctly.
 
 ## Limitations (honest)
 - Heuristic, not a verdict engine: it can miss novel/well-crafted scams (false negatives) and occasionally flag legitimate messages (false positives).
