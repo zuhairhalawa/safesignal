@@ -1,0 +1,11 @@
+{
+  "name": "safesignal",
+  "version": "1.0.0",
+  "description": "SafeSignal — a 100% local, no-network suspicious-message explainer.",
+  "type": "module",
+  "scripts": {
+    "test": "node --test"
+  },
+  "license": "MIT",
+  "private": true
+}

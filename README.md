@@ -1,0 +1,65 @@
+# SafeSignal
+
+**Understand a suspicious message before you act on it.** Paste an email or SMS and SafeSignal explains, in plain language, the specific scam warning signs it contains — and what to do. It runs **100% locally in your browser**: nothing you paste is sent anywhere, stored, or logged.
+
+Built for **SafeSpace Hacks 2026** (online, Oct 17 – Nov 22 2026).
+
+---
+
+## The problem
+The riskiest moment in everyday digital life is the message you *hesitate* to click — the "your account is suspended" email, the "I need gift cards" text from your "boss," the "parcel on hold, pay a fee" SMS. Non-experts often can't tell a scam from a real message, and the safety advice they find is either too vague ("be careful") or too technical. Pasting the message into an online "checker" can also leak private content.
+
+## The solution
+SafeSignal is a **local-only explainer**. For a pasted message (and optionally raw email headers), it:
+- gives an honest verdict band — **Low signal / Caution / Likely scam** — with a heuristic signal score;
+- lists the **specific** warning signs it found, each with *why it's suspicious* and *what to do*;
+- shows the exact evidence (the urgency phrase, the disguised link, the gift-card request);
+- is explicit about what it **cannot** do, so it never gives false confidence.
+
+The intended user is an everyday person; the safer outcome is that they understand the risk and take a safe next step (don't click, verify through a trusted channel) instead of guessing.
+
+## What it detects (heuristics, explained to the user)
+- Urgency / pressure / account-threat language
+- Requests to confirm passwords, cards, OTPs, PINs, or ID numbers
+- Disguised links: look-alike/typosquatted brand domains, link shorteners, raw-IP URLs, punycode, `@` tricks, abused TLDs, non-HTTPS
+- Unusual payment demands (gift cards, crypto, wire)
+- Prize / refund / "held parcel" bait
+- Risky attachments and "enable macros" requests
+- Generic impersonal greetings
+- (With headers) Reply-To vs From mismatch and SPF/DKIM/DMARC failures
+
+## Trust & responsible design
+- **Private by design:** pure client-side JavaScript. No network requests, no analytics, no storage. You can verify this by reading `index.html` / `analyzer.js` or watching the network tab (it stays empty).
+- **Honest, not alarmist:** a clean message returns "Low signal" with the explicit caveat that absence of signals is **not** proof of safety. The tool states its limits prominently.
+- **No new risk:** it never asks you to log in, click out, or share anything.
+
+## Run it
+It's a static site — any static server works (local modules need an `http://` origin, not `file://`):
+
+```bash
+cd safespace
+python -m http.server 8077
+```
+
+Then open `http://localhost:8077/`. Use the built-in example buttons, or paste your own message.
+
+## Tests
+Detection logic lives in `analyzer.js` (one source of truth, used by both the UI and the tests). Run:
+
+```bash
+cd safespace
+node --test
+```
+
+12 tests pass: synthetic scam samples (phish, gift-card, parcel, macro-malware, spoofed headers) rank Caution/High; synthetic legitimate samples (order confirmation, appointment reminder, real-brand link) stay Low; plus unit tests for URL extraction, brand look-alike detection (including no-false-positive cases), and score bounds. All samples are **synthetic / author-created** — no real personal data, per the event rules.
+
+## Limitations (honest)
+- Heuristic, not a verdict engine: it can miss novel/well-crafted scams (false negatives) and occasionally flag legitimate messages (false positives).
+- It cannot verify who really sent a message, scan live links, or open attachments — it only reads the text/headers you paste.
+- It is a learning aid, **not** a replacement for your provider's security tools or for emergency services.
+
+## Credits & AI-assistance disclosure
+Original first-party work, created during the event window (Oct 17 – Nov 22 2026). Built **with AI assistance** (an AI coding assistant helped with design, implementation, and tests); all code was reviewed and is original to this project. No third-party code or datasets are bundled.
+
+## License
+MIT — see [LICENSE](LICENSE).
