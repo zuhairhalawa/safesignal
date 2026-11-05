@@ -40,7 +40,7 @@ The riskiest moment in everyday digital life is the message you hesitate to clic
 Paste an email/SMS (and optionally raw headers). SafeSignal returns an honest band — Low signal / Caution / Likely scam — leads with a plain **recommended action**, and lists the specific signals it found (most serious first): urgency/threats, password/OTP/card requests, **link text that doesn't match its real destination**, disguised/look-alike and **homograph** links, direct money requests, gift-card/crypto demands, **arrest/fine threats**, **"bank details changed" (BEC)**, **"read back the code we sent" (reverse-OTP)**, **"call this number" vishing**, prize/job/parcel bait, risky attachments, **hidden zero-width characters**, and (from headers) Reply-To mismatch and SPF/DKIM/DMARC failures. Each signal explains *why* it's suspicious and *what to do*, with the exact evidence shown. The detector set was hardened across two adversarial QA passes over 25 realistic scam types (42 automated tests pass).
 
 **How I built it**
-Pure client-side JavaScript. The detection engine (`analyzer.js`) is one source of truth used by both the UI (`index.html`) and an automated test suite (`node --test`, 12 tests). No frameworks, no backend, no network calls — privacy is enforced by architecture, not by a promise.
+Pure client-side JavaScript. The detection engine (`analyzer.js`) is one source of truth used by both the UI (`index.html`) and an automated test suite (`node --test`, 42 tests). No frameworks, no backend, no network calls — privacy is enforced by architecture, not by a promise.
 
 **Challenges**
 Calibrating heuristics to be useful without crying wolf: a lone macro-malware attachment or a spoofed-header message must rank High, while a legitimate real-brand link must stay Low. I encoded that as a principled band rule (critical high-severity signals, or score threshold, or stacked signals) and pinned it with tests, including explicit no-false-positive cases for brand look-alike detection.
@@ -107,3 +107,13 @@ Paste that repo URL into the Devpost "Try it out" field.
 - [ ] Project page filled from the fields above; `screenshots/01–03` uploaded.
 - [ ] Credits section includes the AI-assistance disclosure (accurate — do not remove).
 - [ ] Submitted before **Nov 22, 17:00 US-Eastern** (Nov 23, 02:00 Asia/Dubai); judging links stay live through Nov 24.
+
+## Final review — rubric self-assessment (honest)
+Scored against the four equal-weight criteria. These are *my* estimates to help you present it, not a prediction of placement.
+
+- **Safety Benefit — strong.** Clear user (a non-expert who just received a suspicious message), clear situation, and a demonstrable safer outcome: the specific red flags are named with "what to do", and results lead with a recommended action. Honest framing ("absence of signals is not proof it's safe") keeps the benefit credible rather than over-claimed.
+- **Practical Functionality — strong.** The core workflow works reliably; one detection engine drives both the UI and **42 passing tests**; it handles empty input, headers, and odd cases without crashing. Hardened over two adversarial QA passes (25 scams, 13 legit, all correct).
+- **Trust & Responsible Design — strongest point.** 100% local — no network, storage, or logging (verifiable in the network tab). States its limits prominently, creates no new risk (never asks you to log in or click out), and deliberately avoids keyword-gaming (it does *not* flag the word "scam", so a legitimate anti-scam notice stays Low).
+- **Clarity & UX — good.** Plain language, accessible markup, sorted signals, built-in examples, color-coded action box. Softest of the four — a short demo video and a little more visual polish would help; the demo script above covers the video.
+
+**Honest caveats to keep in the submission:** it's a heuristic, so it can miss a novel/well-crafted scam and occasionally over-flag; it can't verify a sender, open links, or scan attachments. All demo data is synthetic. These are stated in the app and README — keep them; judges reward honesty over hype.
