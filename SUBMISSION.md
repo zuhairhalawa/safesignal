@@ -39,6 +39,8 @@ The riskiest moment in everyday digital life is the message you hesitate to clic
 **What it does**
 Paste an email/SMS (and optionally raw headers). SafeSignal returns an honest band — Low signal / Caution / Likely scam — leads with a plain **recommended action**, and lists the specific signals it found (most serious first): urgency/threats, password/OTP/card requests, **link text that doesn't match its real destination**, disguised/look-alike and **homograph** links, direct money requests, gift-card/crypto demands, **arrest/fine threats**, **"bank details changed" (BEC)**, **"read back the code we sent" (reverse-OTP)**, **"call this number" vishing**, prize/job/parcel bait, risky attachments, **hidden zero-width characters**, and (from headers) Reply-To mismatch and SPF/DKIM/DMARC failures. Each signal explains *why* it's suspicious and *what to do*, with the exact evidence shown. The detector set was hardened across two adversarial QA passes over 25 realistic scam types (42 automated tests pass).
 
+Beyond checking one message, it also teaches: a gamified **"Spot the scam"** practice mode (guess scam/safe on synthetic messages, then see the verdict + a lesson), a **read-aloud** option for low-vision/low-literacy users, and a one-tap **shareable plain-language summary** to forward to a relative. All still 100% local — no extra network calls.
+
 **How I built it**
 Pure client-side JavaScript. The detection engine (`analyzer.js`) is one source of truth used by both the UI (`index.html`) and an automated test suite (`node --test`, 42 tests). No frameworks, no backend, no network calls — privacy is enforced by architecture, not by a promise.
 
@@ -65,6 +67,7 @@ Original first-party work built during the event window. Built with AI assistanc
 - `01-input.jpg` — the private-by-design input screen
 - `02-result-scam.jpg` — a phishing message explained (Likely scam)
 - `03-result-low.jpg` — a normal message correctly kept Low signal
+- `04-learn-quiz.jpg` — the "Spot the scam" learn mode with verdict + lesson
 
 ---
 
@@ -79,6 +82,8 @@ Record your screen running the tool locally (`python -m http.server 8077` → `h
 6. Close on the privacy point: everything ran locally; nothing was uploaded.
 
 Keep it calm and concrete. Judges reward honest limitations over hype.
+
+> **Worth showing (10–15s each):** the **Learn: spot the scam** tab (answer one question — lands the education angle), the **🔊 Read aloud** button (accessibility), and **📋 Copy a shareable summary** (so protection spreads to a relative). These three are what set it apart from a plain checker.
 
 ## Push the repo (owner steps — needs your GitHub account)
 The project is already a local git repo with commits under your identity. To publish:

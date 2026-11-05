@@ -18,6 +18,16 @@ SafeSignal is a **local-only explainer**. For a pasted message (and optionally r
 
 The intended user is an everyday person; the safer outcome is that they understand the risk and take a safe next step (don't click, verify through a trusted channel) instead of guessing.
 
+## More than a checker
+SafeSignal doesn't just flag one message — it helps you (and the people you look out for) get better at this:
+- **Learn: "Spot the scam"** — a short, gamified practice round of synthetic messages. You guess scam or safe, then see SafeSignal's verdict and a one-line lesson. (Anti-scam practice is a recurring trait of winning scam-awareness projects — and it builds the real defence: your own judgement.)
+- **Read aloud** — any result can be spoken via the browser's built-in speech, for users who are low-vision, low-literacy, or simply more comfortable listening. The people most targeted by scams benefit most.
+- **Copy a shareable summary** — one tap copies a plain-language explanation you can forward to a worried relative ("here's *why* this is a scam"), so protection spreads to people who'd never open a tool themselves.
+
+All of this is still **100% local** — the learn mode, speech, and sharing add zero network calls.
+
+**Honest positioning:** some competing tools use ML classifiers or a backend. SafeSignal deliberately doesn't — its edge is being **private, explainable, and educational**. It won't out-detect a trained model on raw accuracy; it wins on trust, clarity, and teaching people to protect themselves.
+
 ## What it detects (heuristics, explained to the user)
 - Urgency / pressure / account-threat language
 - Requests to confirm passwords, cards, OTPs, PINs, or ID numbers
