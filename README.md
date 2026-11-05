@@ -21,12 +21,18 @@ The intended user is an everyday person; the safer outcome is that they understa
 ## What it detects (heuristics, explained to the user)
 - Urgency / pressure / account-threat language
 - Requests to confirm passwords, cards, OTPs, PINs, or ID numbers
+- **Link text that doesn't match its real destination** (HTML/markdown links)
 - Disguised links: look-alike/typosquatted brand domains, link shorteners, raw-IP URLs, punycode, `@` tricks, abused TLDs, non-HTTPS
+- **Homograph / internationalised look-alike domains** (non-Latin characters that imitate a real brand)
 - Unusual payment demands (gift cards, crypto, wire)
+- **"Call this number" vishing** (fake-charge / tech-support / refund scams)
 - Prize / refund / "held parcel" bait
 - Risky attachments and "enable macros" requests
+- **Hidden zero-width characters** used to split keywords and dodge filters
 - Generic impersonal greetings
 - (With headers) Reply-To vs From mismatch and SPF/DKIM/DMARC failures
+
+Results lead with a plain **recommended action** keyed to the verdict, and signals are ordered most-serious first.
 
 ## Trust & responsible design
 - **Private by design:** pure client-side JavaScript. No network requests, no analytics, no storage. You can verify this by reading `index.html` / `analyzer.js` or watching the network tab (it stays empty).
@@ -51,7 +57,7 @@ cd safespace
 node --test
 ```
 
-12 tests pass: synthetic scam samples (phish, gift-card, parcel, macro-malware, spoofed headers) rank Caution/High; synthetic legitimate samples (order confirmation, appointment reminder, real-brand link) stay Low; plus unit tests for URL extraction, brand look-alike detection (including no-false-positive cases), and score bounds. All samples are **synthetic / author-created** — no real personal data, per the event rules.
+20 tests pass: synthetic scam samples (phish, gift-card, parcel, macro-malware, spoofed headers, HTML/markdown link-mismatch, homograph domain, tech-support/refund vishing, hidden-character obfuscation) rank Caution/High; synthetic legitimate samples (order confirmation, appointment reminder, real-brand link, matching link text, benign "call the clinic") stay Low and are explicitly guarded against false positives; plus unit tests for URL extraction, brand look-alike detection, score bounds, and severity ordering. All samples are **synthetic / author-created** — no real personal data, per the event rules.
 
 ## Limitations (honest)
 - Heuristic, not a verdict engine: it can miss novel/well-crafted scams (false negatives) and occasionally flag legitimate messages (false positives).

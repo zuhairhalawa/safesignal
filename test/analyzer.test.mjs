@@ -102,3 +102,55 @@ test('scores are bounded 0..100', () => {
   assert.ok(r.score >= 0 && r.score <= 100);
   assert.equal(r.band, 'high');
 });
+
+// ---------- New detectors (refinement pass) ----------
+
+test('HTML link whose text and destination differ => link-mismatch, high', () => {
+  const msg = `Please confirm your details here: <a href="http://paypa1-login.top/verify">www.paypal.com</a>`;
+  const r = analyzeMessage(msg);
+  assert.ok(hasSignal(r, 'link-mismatch'));
+  assert.equal(r.band, 'high');
+});
+
+test('Markdown link whose text and destination differ => link-mismatch', () => {
+  const r = analyzeMessage(`Sign in at [secure.microsoft.com](https://micr0soft-support.xyz/login)`);
+  assert.ok(hasSignal(r, 'link-mismatch'));
+  assert.equal(r.band, 'high');
+});
+
+test('Matching link text and destination => NO mismatch flagged', () => {
+  const r = analyzeMessage(`Read more at <a href="https://www.wikipedia.org/wiki/Phishing">wikipedia.org</a>`);
+  assert.equal(hasSignal(r, 'link-mismatch'), false);
+});
+
+test('Homograph / internationalised look-alike domain => risky-links', () => {
+  // the 'a' in "paypal" here is Cyrillic U+0430
+  const r = analyzeMessage(`Verify your account at https://pаypal.com/login now`);
+  assert.ok(hasSignal(r, 'risky-links'));
+});
+
+test('Tech-support / refund vishing (number + charge hook) => callback-scam', () => {
+  const msg = `Your Norton subscription has auto-renewed for $499.99. To cancel this charge, call our support team at +1 (888) 555-0199.`;
+  const r = analyzeMessage(msg);
+  assert.ok(hasSignal(r, 'callback-scam'));
+});
+
+test('Benign "call the clinic" with no phone number => NO callback-scam', () => {
+  const r = analyzeMessage(`Reminder: your appointment is tomorrow. Call the clinic if you need to reschedule.`);
+  assert.equal(hasSignal(r, 'callback-scam'), false);
+  assert.equal(r.band, 'low');
+});
+
+test('Hidden zero-width characters => hidden-characters signal', () => {
+  const r = analyzeMessage(`Your acc​ount was sus​pended. Please review.`);
+  assert.ok(hasSignal(r, 'hidden-characters'));
+});
+
+test('Signals are sorted most-severe first', () => {
+  const msg = `Dear Customer, URGENT: verify your account and confirm your password here: http://paypa1-secure.top/login`;
+  const r = analyzeMessage(msg);
+  const rank = { high: 3, medium: 2, low: 1 };
+  for (let i = 1; i < r.signals.length; i++) {
+    assert.ok(rank[r.signals[i - 1].severity] >= rank[r.signals[i].severity]);
+  }
+});

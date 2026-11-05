@@ -64,7 +64,7 @@ function registrableTail(host) {
 
 // crude homoglyph / typosquat distance against a brand token
 function looksLikeBrand(host) {
-  const labels = host.split('.');
+  const labels = normalizeConfusables(host).split('.');
   for (const brand of COMMON_BRANDS) {
     for (const label of labels) {
       if (label === brand) continue; // exact brand label is not itself suspicious here
@@ -108,6 +108,29 @@ function anyMatch(text, patterns) {
   return hits;
 }
 
+// Map common look-alike (homoglyph/confusable) characters to their ASCII twin.
+const CONFUSABLES = {
+  'а': 'a', 'е': 'e', 'о': 'o', 'р': 'p', 'с': 'c',
+  'х': 'x', 'ѕ': 's', 'і': 'i', 'ј': 'j', 'қ': 'k',
+  'һ': 'h', 'ԁ': 'd', 'ο': 'o', 'ɡ': 'g', 'ɩ': 'i',
+  'ӏ': 'l', 'ᴏ': 'o', 'ɑ': 'a', 'ո': 'n',
+};
+function normalizeConfusables(s) {
+  return [...String(s)].map((ch) => CONFUSABLES[ch] || ch).join('');
+}
+
+// Pull (displayText, href) pairs out of HTML anchors and markdown links so we
+// can detect when the visible text claims one site but the link goes elsewhere.
+function extractLinkPairs(raw) {
+  const pairs = [];
+  let m;
+  const md = /\[([^\]]+)\]\(\s*((?:https?:\/\/|www\.)[^\s)]+)\s*\)/gi;
+  while ((m = md.exec(raw)) !== null) pairs.push({ display: m[1], href: m[2] });
+  const a = /<a\b[^>]*href\s*=\s*["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi;
+  while ((m = a.exec(raw)) !== null) pairs.push({ display: m[2].replace(/<[^>]+>/g, '').trim(), href: m[1] });
+  return pairs;
+}
+
 export function analyzeMessage(text, opts = {}) {
   const headers = opts.headers || '';
   const raw = String(text || '');
@@ -116,6 +139,16 @@ export function analyzeMessage(text, opts = {}) {
   const positives = [];
 
   const add = (s) => signals.push(s);
+
+  // 0) Hidden / zero-width characters (used to split keywords and dodge filters)
+  if (/[​-‍⁠﻿]/.test(raw)) {
+    add({
+      id: 'hidden-characters', label: 'Hidden zero-width characters present', severity: 'medium', weight: 12,
+      explanation: 'Invisible characters are inserted to break up scam keywords (e.g. "pass​word") so filters miss them, or to disguise a web address. Legitimate messages rarely contain them.',
+      advice: 'Treat the message as deliberately evasive. Do not act on it without verifying through a trusted channel.',
+      evidence: ['Zero-width or invisible characters detected in the text.'],
+    });
+  }
 
   // 1) Urgency / pressure / threats
   const urgency = anyMatch(lc, [
@@ -149,6 +182,26 @@ export function analyzeMessage(text, opts = {}) {
     });
   }
 
+  // 2b) Link text vs real destination mismatch (HTML/markdown links)
+  const mismatches = [];
+  for (const { display, href } of extractLinkPairs(raw)) {
+    const dMatch = display.match(/((?:https?:\/\/)?(?:www\.)?[a-z0-9-]+(?:\.[a-z0-9-]+)+)/i);
+    if (!dMatch) continue;
+    const dTail = registrableTail(hostOf(dMatch[1]));
+    const hTail = registrableTail(hostOf(href));
+    if (dTail && hTail && dTail !== hTail) {
+      mismatches.push(`shows "${display.trim()}" but the link actually goes to ${hostOf(href)}`);
+    }
+  }
+  if (mismatches.length) {
+    add({
+      id: 'link-mismatch', label: 'Link text does not match its real destination', severity: 'high', weight: 28,
+      explanation: 'The clickable text shows one website while the link leads somewhere else. This is a classic trick to send you to a fake login page that looks official.',
+      advice: 'Do not click. The visible name is not where the link leads. Open the real site yourself instead.',
+      evidence: mismatches.slice(0, 4),
+    });
+  }
+
   // 3) URL risks
   const urls = extractUrls(raw);
   const urlEvidence = [];
@@ -158,7 +211,8 @@ export function analyzeMessage(text, opts = {}) {
     const tail = registrableTail(host);
     const tld = host.split('.').pop();
     const notes = [];
-    if (/^xn--/.test(host) || host.split('.').some((l) => l.startsWith('xn--'))) notes.push('uses punycode (can hide look-alike characters)');
+    if (/^xn--/.test(host) || host.split('.').some((l) => l.startsWith('xn--'))) notes.push('uses punycode / an internationalised domain (can hide look-alike characters)');
+    if (/[^\x00-\x7F]/.test(host)) notes.push('contains non-Latin look-alike characters (possible homograph spoof)');
     if (/^\d{1,3}(\.\d{1,3}){3}$/.test(host)) notes.push('is a raw IP address, not a named site');
     if (/@/.test(url.replace(/^https?:\/\//, ''))) notes.push('contains "@", which can disguise the real destination');
     if (URL_SHORTENERS.includes(tail)) notes.push('is a link shortener that hides the real destination');
@@ -194,6 +248,19 @@ export function analyzeMessage(text, opts = {}) {
       explanation: 'Requests to pay via gift cards, crypto or wire transfer are a hallmark of scams because these payments are hard to reverse or trace.',
       advice: 'No legitimate company, tax authority or boss collects payment in gift cards or crypto. Treat it as a scam.',
       evidence: payLure.slice(0, 4),
+    });
+  }
+
+  // 4b) "Call this number" vishing (fake-charge / tech-support / refund scams)
+  const phoneRe = /\+?\d[\d\s().-]{6,}\d/;
+  const callbackCtx = /charged|subscription|renew(ed|al|s)?|auto-?renew|refund|invoice|to cancel|cancel (?:your|this|the)|call (?:this|the|our|us|now|immediately|toll)|support (?:team|line|number)|antivirus|norton|mcafee|geek squad/i;
+  const phoneHit = raw.match(phoneRe);
+  if (phoneHit && callbackCtx.test(lc)) {
+    add({
+      id: 'callback-scam', label: 'A phone number plus a charge / refund hook', severity: 'medium', weight: 18,
+      explanation: 'Fake-charge, "your subscription renewed", and tech-support scams push you to phone a number so a person can pressure you in real time. The number belongs to the scammer, not the company.',
+      advice: 'Do not call numbers from unexpected messages. If worried about a charge, use the official number on your card, app, or a receipt you already trust.',
+      evidence: [phoneHit[0].trim(), (lc.match(callbackCtx) || [''])[0]].filter(Boolean),
     });
   }
 
@@ -272,7 +339,7 @@ export function analyzeMessage(text, opts = {}) {
   // Band logic: 'high' when the score is high, OR any single high-severity
   // signal from the critical set is present, OR two+ high-severity signals stack.
   const CRITICAL_HIGH = new Set([
-    'credential-request', 'risky-links', 'payment-lure', 'attachment-risk', 'auth-fail',
+    'credential-request', 'risky-links', 'payment-lure', 'attachment-risk', 'auth-fail', 'link-mismatch',
   ]);
   const highSev = signals.filter((s) => s.severity === 'high');
   let band = 'low';
@@ -291,6 +358,10 @@ export function analyzeMessage(text, opts = {}) {
     'Everything runs locally in your browser: nothing you paste is sent anywhere, stored, or logged.',
     'When unsure, verify through a channel you already trust (official app, a number from the back of your card, the organisation’s known website typed by hand).',
   ];
+
+  // Show the most serious signals first.
+  const rank = { high: 3, medium: 2, low: 1 };
+  signals.sort((a, b) => rank[b.severity] - rank[a.severity]);
 
   return { band, score, signals, positives, summary, limitations };
 }

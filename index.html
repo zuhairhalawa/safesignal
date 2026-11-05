@@ -40,6 +40,11 @@
   .meter{flex:1;min-width:160px;height:10px;background:var(--panel2);border-radius:999px;overflow:hidden;border:1px solid var(--line)}
   .meter>i{display:block;height:100%;width:0}
   .summary{margin:10px 0 0;color:var(--ink)}
+  .action{margin:12px 0 0;padding:12px 14px;border-radius:10px;border:1px solid var(--line);
+    background:var(--panel2);font-weight:600}
+  .action.high{border-color:rgba(248,81,73,.45);background:rgba(248,81,73,.1)}
+  .action.caution{border-color:rgba(210,153,34,.4);background:rgba(210,153,34,.1)}
+  .action.low{border-color:rgba(63,185,80,.35);background:rgba(63,185,80,.08)}
   .sig{border:1px solid var(--line);border-radius:10px;margin-top:10px;background:var(--panel2)}
   .sig>summary{list-style:none;padding:12px 14px;display:flex;gap:10px;align-items:center;justify-content:space-between}
   .sig>summary::-webkit-details-marker{display:none}
@@ -87,13 +92,14 @@
     </div>
   </section>
 
-  <section id="results" class="card" hidden aria-live="polite">
+  <section id="results" class="card" hidden role="status" aria-live="polite">
     <div class="verdict">
       <span id="badge" class="badge">—</span>
       <div class="meter" aria-hidden="true"><i id="bar"></i></div>
       <span id="score" class="examples"></span>
     </div>
     <p id="summary" class="summary"></p>
+    <p id="action" class="action"></p>
 
     <div id="signals"></div>
 
@@ -145,6 +151,15 @@
     $('score').textContent = `signal score ${r.score}/100 (heuristic)`;
     $('summary').textContent = r.summary;
 
+    const ACTION = {
+      high: '🚫 Recommended: do not click, reply, call, pay, or share any details. If it claims to be from a company you use, open their official app or type their website address yourself.',
+      caution: '⚠️ Recommended: slow down and verify independently before acting. Do not use the links or phone numbers in this message — reach the organisation through a channel you already trust.',
+      low: 'ℹ️ Recommended: no strong red flags, but stay alert — this is not proof it is safe. Never enter a password or make a payment because of an unexpected message.',
+    };
+    const action = $('action');
+    action.className = 'action ' + r.band;
+    action.textContent = ACTION[r.band];
+
     const sigBox = $('signals');
     if (!r.signals.length) {
       sigBox.innerHTML = `<p class="empty">No specific warning patterns matched. That is reassuring but not proof of safety — read the limits below.</p>`;
@@ -175,6 +190,9 @@
     const text = $('msg').value.trim();
     if (!text) { $('msg').focus(); return; }
     render(analyzeMessage(text, { headers: $('hdr').value.trim() }));
+  });
+  $('msg').addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); $('analyze').click(); }
   });
   $('clear').addEventListener('click', () => {
     $('msg').value = ''; $('hdr').value = ''; $('results').hidden = true; $('msg').focus();
