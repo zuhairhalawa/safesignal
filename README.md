@@ -24,6 +24,7 @@ The intended user is an everyday person; the safer outcome is that they understa
 - **Link text that doesn't match its real destination** (HTML/markdown links)
 - Disguised links: look-alike/typosquatted brand domains, link shorteners, raw-IP URLs, punycode, `@` tricks, abused TLDs, non-HTTPS
 - **Homograph / internationalised look-alike domains** (non-Latin characters that imitate a real brand)
+- **Direct requests to send money / cash / a transfer** (even without a named method)
 - Unusual payment demands (gift cards, crypto, wire)
 - **"Call this number" vishing** (fake-charge / tech-support / refund scams)
 - Prize / refund / "held parcel" bait
@@ -57,7 +58,7 @@ cd safespace
 node --test
 ```
 
-20 tests pass: synthetic scam samples (phish, gift-card, parcel, macro-malware, spoofed headers, HTML/markdown link-mismatch, homograph domain, tech-support/refund vishing, hidden-character obfuscation) rank Caution/High; synthetic legitimate samples (order confirmation, appointment reminder, real-brand link, matching link text, benign "call the clinic") stay Low and are explicitly guarded against false positives; plus unit tests for URL extraction, brand look-alike detection, score bounds, and severity ordering. All samples are **synthetic / author-created** — no real personal data, per the event rules.
+23 tests pass: synthetic scam samples (phish, gift-card, parcel, macro-malware, spoofed headers, HTML/markdown link-mismatch, homograph domain, tech-support/refund vishing, hidden-character obfuscation, direct money requests like "send money now" / "wire me $500") rank Caution/High; synthetic legitimate samples (order confirmation, appointment reminder, real-brand link, matching link text, benign "call the clinic", past-tense "I already sent you the money") stay Low and are explicitly guarded against false positives; plus unit tests for URL extraction, brand look-alike detection, score bounds, and severity ordering. All samples are **synthetic / author-created** — no real personal data, per the event rules.
 
 ## Limitations (honest)
 - Heuristic, not a verdict engine: it can miss novel/well-crafted scams (false negatives) and occasionally flag legitimate messages (false positives).

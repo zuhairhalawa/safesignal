@@ -146,6 +146,24 @@ test('Hidden zero-width characters => hidden-characters signal', () => {
   assert.ok(hasSignal(r, 'hidden-characters'));
 });
 
+test('Bare "send money now" is caught as a direct money request => high', () => {
+  const r = analyzeMessage('send money now i am a scammer');
+  assert.ok(hasSignal(r, 'money-request'));
+  assert.equal(r.band, 'high');
+});
+
+test('"wire me $500 today" is caught', () => {
+  const r = analyzeMessage('Please wire me $500 today, I will explain later.');
+  assert.ok(hasSignal(r, 'money-request'));
+  assert.equal(r.band, 'high');
+});
+
+test('Past-tense "I already sent you the money" is NOT a money request => low', () => {
+  const r = analyzeMessage('Thanks, I already sent you the money for dinner yesterday.');
+  assert.equal(hasSignal(r, 'money-request'), false);
+  assert.equal(r.band, 'low');
+});
+
 test('Signals are sorted most-severe first', () => {
   const msg = `Dear Customer, URGENT: verify your account and confirm your password here: http://paypa1-secure.top/login`;
   const r = analyzeMessage(msg);

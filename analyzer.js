@@ -251,6 +251,23 @@ export function analyzeMessage(text, opts = {}) {
     });
   }
 
+  // 4a) Direct request to send money (even without a named method)
+  const moneyReq = anyMatch(lc, [
+    /\bsend (?:me |us |over |the |some )*(?:money|cash|funds?|payment|\$\s?\d|\d+\s?(?:usd|aed|eur|gbp|dollars|dirhams))\b/,
+    /\btransfer (?:me |us |the |over )*(?:money|funds?|cash|\$?\s?\d)/,
+    /\bwire (?:me|us|the|over|\$?\s?\d)/,
+    /\b(?:pay|send|transfer) (?:me|us) (?:now|immediately|asap|right away|urgently|today)\b/,
+    /\bi need (?:you to send|money|cash|a payment|funds)\b/,
+  ]);
+  if (moneyReq.length) {
+    add({
+      id: 'money-request', label: 'Direct request to send money', severity: 'high', weight: 24,
+      explanation: 'A message that asks you to send money, cash, or a transfer — especially urgently — is a core scam action. Treat any unsolicited money request with suspicion, even if the sender looks like someone you know (accounts get hacked and names get spoofed).',
+      advice: 'Do not send money based on a message. Confirm the request in person or by calling a number you already trust — not one from the message.',
+      evidence: moneyReq.slice(0, 4),
+    });
+  }
+
   // 4b) "Call this number" vishing (fake-charge / tech-support / refund scams)
   const phoneRe = /\+?\d[\d\s().-]{6,}\d/;
   const callbackCtx = /charged|subscription|renew(ed|al|s)?|auto-?renew|refund|invoice|to cancel|cancel (?:your|this|the)|call (?:this|the|our|us|now|immediately|toll)|support (?:team|line|number)|antivirus|norton|mcafee|geek squad/i;
@@ -339,7 +356,7 @@ export function analyzeMessage(text, opts = {}) {
   // Band logic: 'high' when the score is high, OR any single high-severity
   // signal from the critical set is present, OR two+ high-severity signals stack.
   const CRITICAL_HIGH = new Set([
-    'credential-request', 'risky-links', 'payment-lure', 'attachment-risk', 'auth-fail', 'link-mismatch',
+    'credential-request', 'risky-links', 'payment-lure', 'attachment-risk', 'auth-fail', 'link-mismatch', 'money-request',
   ]);
   const highSev = signals.filter((s) => s.severity === 'high');
   let band = 'low';
