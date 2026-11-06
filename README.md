@@ -4,6 +4,10 @@
 
 Built for **SafeSpace Hacks 2026** (online, Oct 17 – Nov 22 2026).
 
+<p align="center">
+  <img src="docs/demo.gif" alt="SafeSignal explaining a PayPal phishing message: verdict 'Likely a scam' with the specific warning signs" width="800">
+</p>
+
 ---
 
 ## The problem
